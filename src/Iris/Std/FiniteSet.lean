@@ -1,0 +1,1345 @@
+/-
+Copyright (c) 2026 Zongyuan Liu, Sergei Stepanenko. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Zongyuan Liu, Sergei Stepanenko
+-/
+
+import Batteries.Data.List.Perm
+import Iris.Std.Classes
+
+/-! ## Abstract Set Interface
+
+This file defines an abstract interface for (finite) sets, inspired by stdpp's `fin_sets`.
+
+### Notation
+
+* `x ∈ S` - Membership
+* `∅` - Empty set
+* `{x}` - Singleton set
+* `S₁ ∪ S₂` - Union
+* `S₁ ∩ S₂` - Intersection
+* `S₁ ∖ S₂` - Difference (remove element)
+* `S₁ ⊆ S₂` - Subset relation
+* `S₁ ## S₂` - Disjoint sets
+* `{ x ∈ S | φ x }` - Filter set by predicate
+-/
+
+namespace Iris.Std
+
+/-- Typeclass for filtering elements from a collection based on a predicate.
+    Provides a `filter` function that takes a collection and a predicate,
+    returning a new collection containing only elements satisfying the predicate. -/
+class Filter (α : outParam <| Type u) (γ : Type v) where
+  filter : γ → (α → Bool) → γ
+export Filter (filter)
+
+syntax (name := comprehensionSynt) (priority := high) "{ " (Lean.binderIdent (" ∈ " term))  " | " term " }" : term
+
+/-- Term elaborator for set comprehension syntax `{ x ∈ S | φ x }`.
+    Desugars comprehensions into calls to the `filter` function. -/
+@[term_elab comprehensionSynt]
+def elabComprehensionSynt : Lean.Elab.Term.TermElab
+  | `({ $x:ident ∈ $t | $p }), expectedType? => do
+      Lean.Elab.Term.elabTerm (← `(filter $t (fun ($x:ident) ↦ $p))) expectedType?
+  | _, _ => Lean.Elab.throwUnsupportedSyntax
+
+@[app_unexpander filter]
+def Filter.unexpander : Lean.PrettyPrinter.Unexpander
+  | `($_ $t fun $x:ident ↦ $p) => `({ $x:ident ∈ $t | $p })
+  | _ => throw ()
+
+/-- Abstract set interface.
+The type constructor `S` represents a set of elements of type `A`.  -/
+
+class Set (S : Type _) (A : outParam (Type _)) extends
+  Membership A S, Insert A S, Singleton A S, Union S
+  , Inter S, SDiff S, EmptyCollection S, Filter A S
+
+/-- Laws that a finite set implementation must satisfy. -/
+class LawfulSet (S : Type _) (A : outParam (Type _)) extends Set S A where
+  /-- Set extensionality: sets with same membership are equal. -/
+  ext : ∀ (X Y : S), (∀ x, x ∈ X ↔ x ∈ Y) → X = Y
+  /-- Membership in empty set is always false. -/
+  mem_empty : ∀ {x : A}, x ∉ (∅ : S)
+  /-- Membership in singleton: decomposed into insert with empty. -/
+  singleton_insert : ∀ {x : A}, { x } = insert x (∅ : S)
+  /-- Membership after insert: true if equal, otherwise unchanged. -/
+  mem_insert_eq : ∀ {s : S} {x y : A}, x = y → x ∈ (insert y s)
+  /-- Membership after insert: unchanged if not equal. -/
+  mem_insert_ne : ∀ {s : S} {x y : A}, x ≠ y →
+    (x ∈ (insert y s) ↔ x ∈ s)
+  /-- Membership in union: x ∈ X ∪ Y ↔ x ∈ X ∨ x ∈ Y -/
+  mem_union : ∀ {X Y : S} {x : A},
+    x ∈ (X ∪ Y) ↔ (x ∈ X ∨ x ∈ Y)
+  /-- Membership in intersection: x ∈ X ∩ Y ↔ x ∈ X ∧ x ∈ Y -/
+  mem_inter : ∀ {X Y : S} {x : A},
+    x ∈ (X ∩ Y) ↔ (x ∈ X ∧ x ∈ Y)
+  /-- Membership in difference: x ∈ X \ Y ↔ x ∈ X ∧ x ∉ Y -/
+  mem_diff : ∀ {X Y : S} {x : A},
+    x ∈ (X \ Y) ↔ (x ∈ X ∧ x ∉ Y)
+  /-- Membership in filter: x ∈ filter φ X ↔ x ∈ X ∧ φ x = true -/
+  mem_filter : ∀ {X : S} {φ : A → Bool} {x : A},
+    x ∈ { y ∈ X | φ y } ↔ (x ∈ X ∧ φ x)
+  export LawfulSet (mem_empty singleton_insert
+    mem_insert_ne mem_union mem_inter mem_filter mem_diff)
+
+namespace Set
+
+variable {S : Type _} {A : Type _} [Set S A]
+
+/-- Subset relation: `S₁` is a subset of `S₂` if every element in `S₁` is also in `S₂`.
+    Corresponds to Rocq's `S₁ ⊆ S₂`. -/
+instance : HasSubset S := ⟨fun S₁ S₂ => ∀ x, x ∈ S₁ → x ∈ S₂⟩
+
+/-- Proper subset relation: `S₁` is a proper subset of `S₂` if every element in `S₁`
+    is in `S₂` but they are not equal. Corresponds to Rocq's `S₁ ⊂ S₂`. -/
+instance : HasSSubset S := ⟨fun S₁ S₂ => S₁ ≠ S₂ ∧ ∀ x, x ∈ S₁ → x ∈ S₂⟩
+
+/-- Two sets are disjoint if they share no common elements.
+    Corresponds to Rocq's `S₁ ## S₂`. -/
+instance : Disjoint S where
+  disjoint S₁ S₂ := ∀ x, ¬(x ∈ S₁ ∧ x ∈ S₂)
+
+/-- Finite set interface extending the abstract set interface with conversion to lists.
+    Every finite set can be converted to a list of its elements. -/
+class FiniteSet (S : Type _) (A : outParam (Type _)) extends Set S A where
+  toList : S → List A
+export FiniteSet (toList)
+
+/-- Helper function that extends a set `s` by inserting all elements from list `l`. -/
+private def ofListExtend (l : List A) (s : S) : S := l.foldl (fun s x => insert x s) s
+
+/-- Convert a list to a set by inserting all elements into the empty set. -/
+abbrev ofList (l : List A) : S := ofListExtend l ∅
+
+/-- Laws for finite sets extending lawful sets.
+    Ensures that `toList` produces a list without duplicates and that
+    membership in the list corresponds exactly to membership in the set. -/
+class LawfulFiniteSet (S : Type _) (A : outParam (Type _)) extends LawfulSet S A, FiniteSet S A where
+  /-- The list representation has no duplicate elements. -/
+  toList_noDup : List.Nodup (toList (m : S))
+  /-- Membership in the list corresponds to membership in the set. -/
+  mem_toList : k ∈ toList m ↔ k ∈ m
+
+end Set
+
+namespace Set
+
+section GenLemmas
+
+variable {S : Type _} {A : Type _} [LawfulSet S A]
+
+/-- Set extensionality: two sets are equal iff they have the same elements.
+    Corresponds to Rocq's `set_ext`. -/
+@[ext]
+theorem ext {X Y : S} : (∀ x : A, x ∈ X ↔ x ∈ Y) → X = Y := by
+  intro H
+  apply LawfulSet.ext (S := S) (A := A) X Y H
+
+/-- Two sets are equal if they are subsets of each other (antisymmetry of subset).
+    Corresponds to Rocq's `set_equiv_spec`. -/
+theorem eq_subset {X Y : S} : X ⊆ Y → Y ⊆ X → X = Y := by
+  intro H1 H2
+  ext x
+  apply Iff.intro
+  · apply H1 x
+  · apply H2 x
+
+/-- Proper subset is equivalent to subset plus inequality. -/
+theorem ssubset_subset  {X Y : S} : (X ⊂ Y) ↔ (X ⊆ Y ∧ X ≠ Y) := by
+  simp [SSubset, Subset]; grind only
+
+/-- Membership in insert: `x ∈ insert y s ↔ x = y ∨ x ∈ s`.
+    Corresponds to Rocq's `elem_of_union`. -/
+theorem mem_insert_eq : ∀ {s : S} {x y : A}, x ∈ (insert y s) ↔ (x = y ∨ x ∈ s) := by
+  intro s x y
+  by_cases heq : x = y
+  · simp [LawfulSet.mem_insert_eq, heq]
+  · simp [mem_insert_ne, heq]
+
+/-- Membership in singleton: true iff equal. Corresponds to Rocq's `elem_of_singleton`. -/
+theorem mem_singleton : ∀ {x y : A}, x ∈ ({ y } : S) ↔ x = y := by
+  intro x y; apply Iff.intro
+  · intro H
+    rw [singleton_insert] at H
+    by_cases heq : x = y; assumption
+    rw [mem_insert_ne heq] at H
+    exfalso
+    apply mem_empty H
+  · rintro ⟨⟩; rw [singleton_insert]
+    rw [mem_insert_eq]; left; rfl
+
+/-- Membership after erase: false if equal. -/
+theorem mem_erase_eq : ∀ {s : S} {x y : A}, x = y → ¬ x ∈ (s \ { y }) := by
+  rintro s x y ⟨⟩
+  rw [mem_diff, mem_singleton]
+  rintro ⟨H1, H2⟩
+  apply H2
+  rfl
+
+/-- Membership after erase: true if not equal. -/
+theorem mem_erase_ne :  ∀ (s : S) {x y : A}, x ≠ y → (x ∈ s ↔ x ∈ (s \ { y })) := by
+  intro s x y H
+  rw [mem_diff, mem_singleton]
+  simp [H]
+
+/-- Membership in difference: y ∈ X \ {x} ↔ y ∈ X ∧ y ≠ x -/
+theorem mem_diff_singleton : ∀ {s : S} {x y : A},
+  x ∈ (s \ { y }) ↔ (x ∈ s ∧ x ≠ y) := by
+  intro s x y
+  rw [mem_diff, mem_singleton]
+
+/-- Disjoint sets have empty intersection and vice versa.
+    Corresponds to Rocq's `disjoint_intersection`. -/
+theorem disjoint_intersection (X Y : S) : X ## Y ↔ X ∩ Y = ∅ := by
+  simp only [Disjoint.disjoint]
+  apply Iff.intro
+  · intro H
+    ext x; rw [mem_inter]
+    simp [H, mem_empty]
+  · intro H x
+    rw [<-mem_inter, H]
+    apply mem_empty
+
+/-- Filter of empty set is empty. Corresponds to Rocq's `filter_empty`. -/
+@[simp]
+theorem filter_empty {φ : A → Bool} : {x ∈ (∅ : S) | φ x} = ∅ := by
+  ext x
+  rw [mem_filter]
+  simp [mem_empty]
+
+/-- Filter distributes over union. Corresponds to Rocq's `filter_union`. -/
+theorem filter_union : ∀ {s₁ s₂ : S} (φ : A → Bool), {x ∈ (s₁ ∪ s₂) | φ x} = {x ∈ s₁ | φ x} ∪ {x ∈ s₂ | φ x} := by
+  intro s₁ s₂ φ
+  ext x
+  rw [mem_union, mem_filter, mem_filter, mem_filter, mem_union]
+  apply Iff.intro
+  · rintro ⟨H1, H2⟩
+    cases H1 with
+    | inl H1 =>
+      left; exact ⟨H1, H2⟩
+    | inr H1 =>
+      right; exact ⟨H1, H2⟩
+  · intro H
+    cases H with
+    | inl H =>
+      exact ⟨Or.inl H.left, H.right⟩
+    | inr H =>
+      exact ⟨Or.inr H.left, H.right⟩
+
+/-- Filter distributes over intersection. Corresponds to Rocq's `filter_intersection`. -/
+theorem filter_inter : ∀ {s₁ s₂ : S} {φ : A → Bool}, {x ∈ (s₁ ∩ s₂) | φ x} = {x ∈ s₁ | φ x} ∩ {x ∈ s₂ | φ x} := by
+  intro s₁ s₂ φ
+  ext x
+  rw [mem_inter, mem_filter, mem_filter, mem_filter, mem_inter]
+  grind only
+
+/-- Filter commutes with insert (conditional on predicate).
+    Corresponds to Rocq's `filter_insert`. -/
+theorem filter_insert {s : S} {x : A} {φ : A → Bool} :
+  {y ∈ (insert x s) | φ y} = if φ x then insert x ({y ∈ s | φ y}) else {y ∈ s | φ y} := by
+  ext y
+  rw [mem_filter]
+  by_cases hpy : φ y
+  · by_cases heq : x = y
+    · simp [mem_insert_eq, heq, hpy]
+    · by_cases hpx : φ x
+      <;> simp [hpx, hpy, mem_insert_ne (fun c => heq (Eq.symm c)), mem_filter]
+  · by_cases heq : x = y
+    · cases heq
+      simp [hpy, mem_insert_eq, mem_filter]
+    · by_cases hpx : φ x
+      <;> simp [hpx, hpy, mem_insert_ne (fun c => heq (Eq.symm c)), mem_filter]
+
+/-- Filter of singleton. Corresponds to Rocq's `filter_singleton`. -/
+@[simp]
+theorem filter_singleton {x : A} {φ : A → Bool} :
+    {y ∈ ({x} : S) | φ y} = if φ x then {x} else ∅ := by
+  rw [singleton_insert, filter_insert, filter_empty]
+
+/-- Composing filters is equivalent to filtering by the conjunction.
+    Corresponds to Rocq's `filter_filter`. -/
+theorem filter_filter (s : S) (φ : A → Bool) (ψ : A → Bool) :
+  {x ∈ {y ∈ s | ψ y} | φ x } = {x ∈ s | φ x ∧ ψ x } := by
+  ext x
+  rw [mem_filter, mem_filter, mem_filter]
+  grind only
+
+/-- Filter distributes over difference. Corresponds to Rocq's `filter_difference`. -/
+theorem filter_diff : ∀ {s₁ s₂ : S} {φ : A → Bool}, {x ∈ (s₁ \ s₂) | φ x} = {x ∈ s₁ | φ x} \ {x ∈ s₂ | φ x} := by
+  intro s₁ s₂ φ
+  ext x
+  rw [mem_diff, mem_filter, mem_filter, mem_filter, mem_diff]
+  grind only
+
+/-- Filtering with always-true predicate yields original set. -/
+theorem filter_true {s : S} : {_x ∈ s | true} = s := by
+  ext x; rw [mem_filter]; simp
+
+/-- Filtering with always-false predicate yields empty set. -/
+theorem filter_false {s : S} : {_x ∈ s | false} = ∅ := by
+  ext x; rw [mem_filter]; simp [mem_empty]
+
+/-- Filtering is idempotent. -/
+theorem filter_idem {s : S} {φ : A → Bool} :
+  {x ∈ {y ∈ s | φ y} | φ x} = {x ∈ s | φ x} := by
+  rw [filter_filter]; ext x; rw [mem_filter, mem_filter]; simp
+
+/-- Complementary filters partition a set. -/
+theorem filter_partition {s : S} {φ : A → Bool} :
+  {x ∈ s | φ x} ∪ {x ∈ s | !φ x} = s := by
+  ext x; rw [mem_union, mem_filter, mem_filter]
+  apply Iff.intro
+  · intro h; cases h with
+    | inl h => exact h.left
+    | inr h => exact h.left
+  · intro h; by_cases hφ : φ x
+    · left; exact ⟨h, hφ⟩
+    · right; exact ⟨h, by simp [hφ]⟩
+
+/-- Complementary filters are disjoint. -/
+theorem filter_disjoint {s : S} {φ : A → Bool} :
+  {x ∈ s | φ x} ## {x ∈ s | !φ x} := by
+  intro x; rw [mem_filter, mem_filter]
+  intro ⟨⟨_, h1⟩, ⟨_, h2⟩⟩
+  cases h : φ x with
+  | true => simp [h] at h2
+  | false => simp [h] at h1
+
+/-- Union is commutative. Corresponds to Rocq's `union_comm`. -/
+@[symm]
+theorem union_comm {s₁ s₂ : S} : s₁ ∪ s₂ = s₂ ∪ s₁ := by
+  ext x; simp [mem_union]; grind only
+
+/-- Intersection is commutative. Corresponds to Rocq's `intersection_comm`. -/
+@[symm]
+theorem inter_comm {s₁ s₂ : S} : s₁ ∩ s₂ = s₂ ∩ s₁ := by
+  ext x; simp [mem_inter]; grind only
+
+/-- Union is associative. Corresponds to Rocq's `union_assoc`. -/
+theorem union_assoc {s₁ s₂ s₃ : S} : s₁ ∪ (s₂ ∪ s₃) = s₁ ∪ s₂ ∪ s₃ := by
+  ext x; simp [mem_union]; grind only
+
+/-- Intersection is associative. Corresponds to Rocq's `intersection_assoc`. -/
+theorem inter_assoc {s₁ s₂ s₃ : S} : s₁ ∩ (s₂ ∩ s₃) = s₁ ∩ s₂ ∩ s₃ := by
+  ext x; simp [mem_inter]; grind only
+
+/-- Empty set is left identity for union. Corresponds to Rocq's `union_empty_l`. -/
+@[simp]
+theorem union_empty_left {s : S} : ∅ ∪ s = s := by
+  ext x; simp [mem_union, mem_empty]
+
+/-- Empty set is right identity for union. Corresponds to Rocq's `union_empty_r`. -/
+@[simp]
+theorem union_empty_right {s : S} : s ∪ ∅ = s := by
+  ext x; simp [mem_union, mem_empty]
+
+/-- Intersection with empty set is empty. Corresponds to Rocq's `intersection_empty_l`. -/
+@[simp]
+theorem inter_empty_left {s : S} : ∅ ∩ s = ∅ := by
+  ext x; simp [mem_inter, mem_empty]
+
+/-- Intersection with empty set is empty. Corresponds to Rocq's `intersection_empty_r`. -/
+@[simp]
+theorem inter_empty_right {s : S} : s ∩ ∅ = ∅ := by
+  ext x; simp [mem_inter, mem_empty]
+
+/-- Intersection distributes over union (left distributivity).
+    Corresponds to Rocq's `intersection_union_l`. -/
+theorem inter_union_distrib {s₁ s₂ s₃ : S} : s₁ ∩ (s₂ ∪ s₃) = (s₁ ∩ s₂) ∪ (s₁ ∩ s₃) := by
+  ext x; simp [mem_inter, mem_union]; grind only
+
+/-- Union distributes over intersection (left distributivity).
+    Corresponds to Rocq's `union_intersection_l`. -/
+theorem union_inter_distrib {s₁ s₂ s₃ : S} : s₁ ∪ (s₂ ∩ s₃) = (s₁ ∪ s₂) ∩ (s₁ ∪ s₃) := by
+  ext x; simp [mem_inter, mem_union]; grind only
+
+/-- Insert commutes with union. Corresponds to Rocq's `union_insert_l`. -/
+theorem insert_union {s₁ s₂ : S} {x : A} : insert x s₁ ∪ s₂ = insert x (s₁ ∪ s₂) := by
+  ext y
+  rw [mem_union, mem_insert_eq, mem_insert_eq, mem_union]
+  grind only
+
+/-- Empty set is a subset of every set. Corresponds to Rocq's `empty_subseteq`. -/
+@[simp]
+theorem empty_subset {s : S} : ∅ ⊆ s := by
+  intro y; simp [mem_empty]
+
+/-- Insert preserves subset relation. -/
+theorem insert_subset_subset {s₁ s₂ : S} {x : A} :
+  s₁ ⊆ s₂ → insert x s₁ ⊆ insert x s₂ := by
+  intro H y; rw [mem_insert_eq, mem_insert_eq]
+  intro G; cases G with
+  | inl G => left; assumption
+  | inr G => right; apply H _ G
+
+/-- A set is a subset of itself with an element inserted.
+    Corresponds to Rocq's `subseteq_union_1`. -/
+theorem insert_subset {s : S} {x : A} :
+  s ⊆ insert x s := by
+  intro y G; rw [mem_insert_eq]
+  right; assumption
+
+/-- Left set is a subset of union. Corresponds to Rocq's `subseteq_union_l`. -/
+theorem union_subset_left {s₁ s₂ : S} :
+  s₁ ⊆ s₁ ∪ s₂ := by
+  intro y G; rw [mem_union]
+  left; assumption
+
+/-- Right set is a subset of union. Corresponds to Rocq's `subseteq_union_r`. -/
+theorem union_subset_right {s₁ s₂ : S} :
+  s₂ ⊆ s₁ ∪ s₂ := by
+  intro y G; rw [mem_union]
+  right; assumption
+
+/-- Intersection is a subset of left set. Corresponds to Rocq's `intersection_subseteq_l`. -/
+theorem inter_subset_left {s₁ s₂ : S} :
+  s₁ ∩ s₂ ⊆ s₁ := by
+  intro y G; rw [mem_inter] at G
+  exact G.left
+
+/-- Intersection is a subset of right set. Corresponds to Rocq's `intersection_subseteq_r`. -/
+theorem inter_subset_right {s₁ s₂ : S} :
+  s₁ ∩ s₂ ⊆ s₂ := by
+  intro y G; rw [mem_inter] at G
+  exact G.right
+
+/-- Difference is a subset of the left set. Corresponds to Rocq's `difference_subseteq`. -/
+theorem diff_subset_left {s₁ s₂ : S} :
+  s₁ \ s₂ ⊆ s₁ := by
+  intro y G; rw [mem_diff] at G
+  exact G.left
+
+/-- Difference with disjoint set is identity. Corresponds to Rocq's `difference_disjoint`. -/
+theorem diff_subset_disj {s₁ s₂ : S} :
+  s₁ ## s₂ → s₁ \ s₂ = s₁ := by
+  intro H
+  ext x; rw [mem_diff]
+  rw [disjoint_intersection] at H
+  apply Iff.intro
+  · rintro ⟨G, _⟩; assumption
+  · intro G
+    by_cases hin : x ∈ s₂
+    · exfalso
+      apply (mem_empty (S := S) (x := x))
+      rw [<-H, mem_inter]
+      exact ⟨G, hin⟩
+    · exact ⟨G, hin⟩
+
+/-- A superset can be decomposed into the subset and its difference.
+    Corresponds to Rocq's `union_difference`. -/
+theorem diff_subset_decomp {s₁ s₂ : S} :
+  s₁ ⊆ s₂ → s₂ = (s₂ \ s₁) ∪ s₁ := by
+  intro H
+  ext x; rw [mem_union, mem_diff]
+  apply Iff.intro
+  · intro G
+    by_cases J : x ∈ s₁
+    · right; assumption
+    · left; exact ⟨G, J⟩
+  · intro G
+    cases G with
+    | inl G =>
+      exact G.left
+    | inr G =>
+      apply H _ G
+
+/-- Difference with empty set is identity. Corresponds to Rocq's `difference_empty`. -/
+@[simp]
+theorem diff_empty {s : S} :
+  s \ ∅ = s := by
+  ext x; rw [mem_diff]; simp [mem_empty]
+
+/-- Self-difference is empty. Corresponds to Rocq's `difference_diag`. -/
+@[simp]
+theorem diff_all {s : S} :
+  s \ s = ∅ := by
+  ext x; rw [mem_diff]; simp [mem_empty]
+
+/-- Filter result is a subset of the original set. Corresponds to Rocq's `filter_subseteq`. -/
+theorem filter_subset {s : S} {φ : A → Bool} :
+  {x ∈ s | φ x} ⊆ s := by
+  intro x; simp only [mem_filter]; grind only
+
+/-- Filter preserves subset relation. -/
+theorem filter_subset_subset {s₁ s₂ : S} {φ : A → Bool} :
+  s₁ ⊆ s₂ → {x ∈ s₁ | φ x} ⊆ {x ∈ s₂ | φ x} := by
+  intro H x; simp only [mem_filter]; rintro ⟨G1, G2⟩; exact ⟨H _ G1, G2⟩
+
+/-- Union is idempotent. Corresponds to Rocq's `union_idemp`. -/
+@[simp]
+theorem union_idem {s : S} : s ∪ s = s := by
+  ext x; rw [mem_union]; simp
+
+/-- Intersection is idempotent. Corresponds to Rocq's `intersection_idemp`. -/
+@[simp]
+theorem inter_idem {s : S} : s ∩ s = s := by
+  ext x; rw [mem_inter]; simp
+
+/-- Inserting an element that's already present doesn't change the set. -/
+theorem insert_idem {s : S} {x : A} : x ∈ s → insert x s = s := by
+  intro h; ext y; rw [mem_insert_eq]; simp; intro hy; subst hy; exact h
+
+/-- Double insert is idempotent. -/
+theorem insert_insert {s : S} {x : A} : insert x (insert x s) = insert x s := by
+  apply insert_idem; rw [mem_insert_eq]; left; rfl
+
+/-- Subset relation is reflexive. Corresponds to Rocq's `subseteq_refl`. -/
+@[refl]
+theorem subset_refl {s : S} : s ⊆ s := by
+  intro x _; assumption
+
+/-- Subset relation is transitive. Corresponds to Rocq's `subseteq_trans`. -/
+theorem subset_trans {s₁ s₂ s₃ : S} : s₁ ⊆ s₂ → s₂ ⊆ s₃ → s₁ ⊆ s₃ := by
+  intro h1 h2 x hx; exact h2 _ (h1 _ hx)
+
+/-- Insert operations commute. Corresponds to Rocq's `union_comm_L`. -/
+theorem insert_comm {s : S} {x y : A} : insert x (insert y s) = insert y (insert x s) := by
+  ext z; rw [mem_insert_eq, mem_insert_eq, mem_insert_eq, mem_insert_eq]; grind only
+
+/-- Inserting into empty set yields singleton. -/
+@[simp]
+theorem insert_empty {x : A} : insert x (∅ : S) = {x} := by
+  rw [singleton_insert]
+
+/-- Inserting an element already in the set doesn't change membership of other elements. -/
+theorem mem_insert_of_mem {s : S} {x y : A} : x ∈ s → x ∈ insert y s := by
+  intro h; rw [mem_insert_eq]; right; exact h
+
+/-- Disjointness is symmetric. Corresponds to Rocq's `disjoint_sym`. -/
+@[symm]
+theorem disjoint_comm {s₁ s₂ : S} : s₁ ## s₂ ↔ s₂ ## s₁ := by
+  simp only [Disjoint.disjoint]; apply Iff.intro <;> (intro h x ⟨hx1, hx2⟩; exact h x ⟨hx2, hx1⟩)
+
+/-- Empty set is disjoint with any set (left). Corresponds to Rocq's `disjoint_empty_l`. -/
+theorem disjoint_empty_left {s : S} : ∅ ## s := by
+  intro x ⟨h, _⟩; exact mem_empty h
+
+/-- Empty set is disjoint with any set (right). Corresponds to Rocq's `disjoint_empty_r`. -/
+theorem disjoint_empty_right {s : S} : s ## ∅ := by
+  intro x ⟨_, h⟩; exact mem_empty h
+
+/-- Singleton disjointness. -/
+theorem disjoint_singleton_left {s : S} {x : A} : {x} ## s ↔ x ∉ s := by
+  simp only [Disjoint.disjoint]
+  apply Iff.intro
+  · intro h hx; exact h x ⟨(mem_singleton.mpr rfl), hx⟩
+  · intro h y ⟨hy1, hy2⟩; rw [mem_singleton] at hy1; subst hy1; exact h hy2
+
+/-- Singleton disjointness (right). -/
+theorem disjoint_singleton_right {s : S} {x : A} : s ## {x} ↔ x ∉ s := by
+  rw [disjoint_comm, disjoint_singleton_left]
+
+/-- Disjoint sets remain disjoint when taking subsets. -/
+theorem disjoint_subset_left {s₁ s₂ t : S} : s₁ ⊆ s₂ → s₂ ## t → s₁ ## t := by
+  intro hsub hdisj x ⟨hx1, hx2⟩
+  exact hdisj x ⟨hsub _ hx1, hx2⟩
+
+/-- Disjoint sets remain disjoint when taking subsets (right). -/
+theorem disjoint_subset_right {s₁ s₂ t : S} : s₁ ⊆ s₂ → t ## s₂ → t ## s₁ := by
+  intro hsub hdisj x ⟨hx1, hx2⟩
+  exact hdisj x ⟨hx1, hsub _ hx2⟩
+
+/-- Union is disjoint iff both parts are disjoint. -/
+theorem disjoint_union_left {s₁ s₂ t : S} : (s₁ ∪ s₂) ## t ↔ s₁ ## t ∧ s₂ ## t := by
+  simp only [Disjoint.disjoint]
+  apply Iff.intro
+  · intro h; apply And.intro
+    · intro x ⟨hx1, hx2⟩; exact h x ⟨(mem_union.mpr (Or.inl hx1)), hx2⟩
+    · intro x ⟨hx1, hx2⟩; exact h x ⟨(mem_union.mpr (Or.inr hx1)), hx2⟩
+  · intro ⟨h1, h2⟩ x ⟨hx1, hx2⟩
+    rw [mem_union] at hx1; cases hx1 with
+    | inl hx1 => exact h1 x ⟨hx1, hx2⟩
+    | inr hx1 => exact h2 x ⟨hx1, hx2⟩
+
+/-- Union is disjoint iff both parts are disjoint (right). -/
+theorem disjoint_union_right {s₁ s₂ t : S} : t ## (s₁ ∪ s₂) ↔ t ## s₁ ∧ t ## s₂ := by
+  rw [disjoint_comm, disjoint_union_left, disjoint_comm (s₂ := s₁), disjoint_comm (s₂ := s₂)]
+
+/-- De Morgan's law: difference distributes over union. -/
+theorem diff_union {s₁ s₂ s₃ : S} : s₁ \ (s₂ ∪ s₃) = (s₁ \ s₂) ∩ (s₁ \ s₃) := by
+  ext x; rw [mem_diff, mem_union, mem_inter, mem_diff, mem_diff]
+  grind only
+
+/-- De Morgan's law: difference distributes over intersection. -/
+theorem diff_inter {s₁ s₂ s₃ : S} : s₁ \ (s₂ ∩ s₃) = (s₁ \ s₂) ∪ (s₁ \ s₃) := by
+  ext x; rw [mem_diff, mem_inter, mem_union, mem_diff, mem_diff]
+  grind only
+
+private theorem ofListExtend_nil {s : S} : ofListExtend [] s = s := by
+  simp [ofListExtend]
+
+private theorem ofListExtend_subset {s : S} {xs : List A} :
+  s ⊆ ofListExtend xs s := by
+  induction xs generalizing s with
+  | nil =>
+    intro z
+    simp [ofListExtend_nil]
+  | cons y ys IH =>
+    intro z
+    simp only [ofListExtend, List.foldl_cons]
+    simp only [ofListExtend] at IH
+    intro H
+    apply IH
+    rw [mem_insert_eq]
+    right; assumption
+
+private theorem ofListExtend_subset_subset {s₁ s₂ : S} {xs : List A} :
+  s₁ ⊆ s₂ →
+  ofListExtend xs s₁ ⊆ ofListExtend xs s₂ := by
+  induction xs generalizing s₁ s₂ with
+  | nil =>
+    intro z
+    simp [ofListExtend_nil]; assumption
+  | cons y ys IH =>
+    intro z
+    simp only [ofListExtend, List.foldl_cons]
+    simp only [ofListExtend] at IH
+    intro H
+    apply IH
+    apply insert_subset_subset z
+
+private theorem ofListExtend_cons {s : S} {x : A} {xs : List A} : ofListExtend (x :: xs) s = ofListExtend xs (insert x s) := by
+  simp [ofListExtend]
+
+private theorem ofListExtend_classify {s : S} {xs : List A} : ofListExtend xs s = s ∪ ofListExtend xs (∅ : S) := by
+  induction xs generalizing s with
+  | nil =>
+    simp [ofListExtend_nil, union_empty_right]
+  | cons x xs IH =>
+    simp only [ofListExtend_cons]
+    rw [IH]
+    ext z; rw [mem_union, mem_insert_eq]
+    apply Iff.intro
+    · intro G
+      rw [mem_union]
+      cases G with
+      | inl G =>
+        cases G with
+        | inl G =>
+          subst G
+          right
+          apply ofListExtend_subset
+          simp [mem_singleton]
+        | inr G =>
+          left; assumption
+      | inr G =>
+        right
+        apply ofListExtend_subset_subset (s₁ := ∅)
+        · apply empty_subset
+        · assumption
+    · rw [mem_union]
+      intro G
+      cases G with
+      | inl G =>
+        left; right; assumption
+      | inr G =>
+        by_cases heq : z = x
+        · subst heq
+          left; left; rfl
+        · right
+          rw [IH, mem_union] at G
+          cases G with
+          | inl G =>
+            simp [mem_singleton] at G
+            exfalso; apply heq G
+          | inr G =>
+            assumption
+
+private theorem ofListExtend_cons_comm {s : S} {x : A} {xs : List A} :
+  ofListExtend (x :: xs) s = insert x (ofListExtend xs s) := by
+  ext y
+  by_cases heq : x = y
+  · rw [mem_insert_eq, ofListExtend_cons]
+    subst heq
+    simp only [true_or, iff_true]
+    apply ofListExtend_subset
+    rw [mem_insert_eq]; left; rfl
+  · simp only [mem_insert_ne (fun c => heq (Eq.symm c))]
+    rw [ofListExtend_cons]
+    apply Iff.intro
+    · intro H
+      rw [ofListExtend_classify, mem_union]; rw [ofListExtend_classify, mem_union] at H
+      rw [mem_insert_ne (fun c => heq (Eq.symm c))] at H
+      apply H
+    · intro H
+      apply ofListExtend_subset_subset (s₁ := s)
+      · apply insert_subset
+      · apply H
+
+/-- Converting empty list to set yields empty set. -/
+@[simp]
+theorem ofList_nil : ofList [] = (∅ : S) := by
+  simp [ofList, ofListExtend_nil]
+
+/-- Converting a cons to a set yields insertion into converted tail. -/
+@[simp]
+theorem ofList_cons : ofList (x :: xs) = insert x ((ofList xs) : S) := by
+  simp [ofList, ofListExtend_cons_comm]
+
+/-- Membership in list corresponds to membership in converted set.
+    Corresponds to Rocq's `elem_of_list_to_set`. -/
+theorem mem_ofList {x : A} {xs : List A} : x ∈ xs ↔ x ∈ (ofList xs : S) := by
+  induction xs with
+  | nil => simp [ofList_nil, mem_empty]
+  | cons y ys IH =>
+    simp only [List.mem_cons, ofList_cons, mem_insert_eq]
+    grind only
+
+/-- Converting concatenated lists yields union of converted lists.
+    Corresponds to Rocq's `list_to_set_app`. -/
+theorem ofList_concat {xs ys : List A} : (ofList (xs ++ ys) : S) = ofList xs ∪ ofList ys := by
+  ext p; simp [mem_union, <-mem_ofList, <-mem_ofList, <-mem_ofList]
+
+/-- Forall predicate on sets. Corresponds to Rocq's `set_Forall`. -/
+def setForall (P : A → Prop) (X : S) : Prop :=
+  ∀ x, x ∈ X → P x
+
+/-- Exists predicate on sets. Corresponds to Rocq's `set_Exists`. -/
+def setExists (P : A → Prop) (X : S) : Prop :=
+  ∃ x, x ∈ X ∧ P x
+
+/-- setForall holds trivially for empty set. Corresponds to Rocq's `set_Forall_empty`. -/
+theorem setForall_empty {P : A → Prop} : setForall P (∅ : S) ↔ True := by
+  simp [setForall]; intro x h; grind only [mem_empty]
+
+/-- setForall for singleton reduces to the predicate. Corresponds to Rocq's `set_Forall_singleton`. -/
+theorem setForall_singleton {P : A → Prop} {x : A} :
+  setForall P ({x} : S) ↔ P x := by
+  simp [setForall]; apply Iff.intro
+  · intro h; apply h; rw [mem_singleton]
+  · intro h y hy; rw [mem_singleton] at hy; subst hy; exact h
+
+/-- setForall distributes over union. Corresponds to Rocq's `set_Forall_union`. -/
+theorem setForall_union {P : A → Prop} {s₁ s₂ : S} :
+  setForall P (s₁ ∪ s₂) ↔ setForall P s₁ ∧ setForall P s₂ := by
+  simp [setForall]; apply Iff.intro
+  · intro h; apply And.intro
+    · intro x hx; apply h; rw [mem_union]; left; exact hx
+    · intro x hx; apply h; rw [mem_union]; right; exact hx
+  · intro ⟨h1, h2⟩ x hx; rw [mem_union] at hx; cases hx with
+    | inl hx => exact h1 _ hx
+    | inr hx => exact h2 _ hx
+
+/-- setExists is false for empty set. Corresponds to Rocq's `set_Exists_empty`. -/
+theorem setExists_empty {P : A → Prop} : setExists P (∅ : S) ↔ False := by
+  simp [setExists, mem_empty]
+
+/-- setExists for singleton reduces to the predicate. Corresponds to Rocq's `set_Exists_singleton`. -/
+theorem setExists_singleton {P : A → Prop} {x : A} :
+  setExists P ({x} : S) ↔ P x := by
+  simp [setExists]; apply Iff.intro
+  · intro ⟨y, hy, hP⟩; rw [mem_singleton] at hy; subst hy; exact hP
+  · intro h; exists x; apply And.intro; rw [mem_singleton]; exact h
+
+/-- setExists distributes over union. Corresponds to Rocq's `set_Exists_union`. -/
+theorem setExists_union {P : A → Prop} {s₁ s₂ : S} :
+  setExists P (s₁ ∪ s₂) ↔ setExists P s₁ ∨ setExists P s₂ := by
+  simp [setExists]; apply Iff.intro
+  · intro ⟨x, hx, hP⟩; rw [mem_union] at hx; cases hx with
+    | inl hx => left; exists x
+    | inr hx => right; exists x
+  · grind only [mem_union]
+
+/-- Relationship between setForall and setExists. -/
+theorem setForall_not_setExists {P : A → Prop} {s : S} :
+  setForall (fun x => ¬P x) s ↔ ¬setExists P s := by
+  simp [setForall, setExists]
+
+/-- Membership is preserved by subset. -/
+theorem mem_of_subset {s₁ s₂ : S} {x : A} : s₁ ⊆ s₂ → x ∈ s₁ → x ∈ s₂ := by
+  intro h hx; exact h _ hx
+
+/-- Non-membership in subset implies non-membership in original. -/
+theorem not_mem_of_not_mem_subset {s₁ s₂ : S} {x : A} : s₁ ⊆ s₂ → x ∉ s₂ → x ∉ s₁ := by
+  intro h hnx hx; exact hnx (h _ hx)
+
+/-- Empty iff every element is not a member. -/
+theorem eq_empty_iff {s : S} : s = ∅ ↔ ∀ x, x ∉ s := by
+  apply Iff.intro
+  · intro h x; subst h; exact mem_empty
+  · intro h; ext x; simp [mem_empty]; exact h x
+
+/-- Non-empty iff there exists a member. -/
+theorem nonempty_iff {s : S} : s ≠ ∅ ↔ ∃ x, x ∈ s := by
+  apply Iff.intro
+  · intro H
+    by_cases G : ∃ x, x ∈ s
+    · assumption
+    · exfalso
+      apply H
+      ext p; grind only [mem_empty]
+  · rintro ⟨x, G⟩
+    grind only [mem_empty]
+
+/-- Singleton equality. -/
+theorem singleton_eq_singleton {x y : A} : ({x} : S) = {y} ↔ x = y := by
+  apply Iff.intro
+  · intro h; have : x ∈ ({y} : S) := by rw [<-h, mem_singleton]
+    rw [mem_singleton] at this; exact this
+  · rintro ⟨⟩; rfl
+
+/-- Union with subset absorption. -/
+theorem union_subset_absorption {s₁ s₂ : S} : s₁ ⊆ s₂ → s₁ ∪ s₂ = s₂ := by
+  intro h; ext x; rw [mem_union]; apply Iff.intro
+  · intro hx; cases hx with
+    | inl hx => exact h _ hx
+    | inr hx => exact hx
+  · intro hx; right; exact hx
+
+/-- Intersection with subset absorption. -/
+theorem inter_subset_absorption {s₁ s₂ : S} : s₁ ⊆ s₂ → s₁ ∩ s₂ = s₁ := by
+  intro h; ext x; rw [mem_inter]; apply Iff.intro
+  · intro ⟨hx, _⟩; exact hx
+  · intro hx; exact ⟨hx, h _ hx⟩
+
+/-- Difference distributes over union (right). -/
+theorem union_diff_distrib_right {s₁ s₂ s₃ : S} : (s₁ ∪ s₂) \ s₃ = (s₁ \ s₃) ∪ (s₂ \ s₃) := by
+  ext x; rw [mem_diff, mem_union, mem_union, mem_diff, mem_diff]; grind only
+
+/-- Intersection with difference. -/
+theorem inter_diff {s₁ s₂ s₃ : S} : (s₁ ∩ s₂) \ s₃ = s₁ ∩ (s₂ \ s₃) := by
+  ext x; rw [mem_diff, mem_inter, mem_inter, mem_diff]; grind only
+
+/-- Disjointness is decidable when set equality is decidable. -/
+instance disjoint_dec [DecidableEq S] : ∀ {E1 E2 : S}, Decidable (E1 ## E2) := by
+  intro E1 E2
+  rw [disjoint_intersection]
+  infer_instance
+
+end GenLemmas
+
+/-- Map operation on sets. Maps a function over all elements.
+    Corresponds to Rocq's `set_map`. -/
+def map {S S' : Type _} {A B : Type _} [FiniteSet S A] [FiniteSet S' B]
+  (f : A → B) (s : S) : S' :=
+  ofList ((toList (S := S) (A := A) s : List A).map f)
+
+/-- Bind operation on sets. Flatmap a function over all elements.
+    Corresponds to Rocq's `set_bind`. -/
+def bind {S S' : Type _} {A B : Type _} [FiniteSet S A] [FiniteSet S' B]
+  (f : A → S') (s : S) : S' :=
+  ofList ((toList s).flatMap (fun x => toList (f x)))
+
+/-- The cardinality (size) of a finite set, defined as the length of its list representation.
+    Corresponds to Rocq's `size`. -/
+def size {S : Type _} {A : Type _} [FiniteSet S A] (s : S) : Nat :=
+  (toList (S := S) (A := A) s : List A).length
+
+section FinLemmas
+variable {S : Type _} {A : Type _} [LawfulFiniteSet S A]
+
+/-- The list representation of a set has no duplicates. -/
+theorem toList_noDup {s : S} : (toList s).Nodup := by
+  simp only [toList]
+  apply LawfulFiniteSet.toList_noDup
+
+/-- Membership in `toList` corresponds to membership in the set. -/
+theorem mem_toList {k : A} {m : S} : k ∈ toList m ↔ k ∈ m := by
+  simp only [toList]
+  apply LawfulFiniteSet.mem_toList
+
+/-- The list representation of the empty set is the empty list. -/
+@[simp]
+theorem toList_empty : toList (∅ : S) = [] := by
+  ext i a; simp
+  intro H
+  apply mem_empty (x := a) (S := S)
+  apply (mem_toList (m := (∅ : S)) (k := a)).mp
+  rw [List.mem_iff_getElem?]
+  exists i
+
+/-- Converting a set to a list and back yields the original set.
+    Corresponds to Rocq's `list_to_set_to_list`. -/
+theorem ofList_toList {m : S} :
+  (ofList (toList m)) = m := by
+  ext k
+  by_cases h : k ∈ m
+  · simp [h]
+    rw [<-mem_toList] at h
+    revert h
+    induction (toList m) with
+    | nil => simp
+    | cons x xs IH =>
+      simp  [ofList_cons, mem_insert_eq]
+      intro H
+      cases H with
+      | inl H =>
+        subst H; left; rfl
+      | inr H =>
+        right; apply IH H
+  · simp [h]
+    intro H
+    rw [<-mem_toList] at h
+    apply h
+    clear h; revert H
+    induction (toList m) with
+    | nil =>
+      simp [ofList_nil, mem_empty]
+    | cons x xs IH =>
+      simp [ofList_cons, mem_insert_eq]
+      intro H
+      cases H with
+      | inl H =>
+        subst H; left; rfl
+      | inr H =>
+        right; apply IH H
+
+/-- List representation of insert is permutation-equivalent to cons (when element not present).
+    Corresponds to Rocq's `elements_union_singleton`. -/
+theorem toList_insert {x : A} {s : S} : x ∉ s → List.Perm (toList (insert x s)) (x :: toList s)  := by
+  intro H
+  rw [List.perm_ext_iff_of_nodup]
+  · simp only [List.mem_cons]
+    intro a
+    rw [mem_toList, mem_insert_eq, mem_toList]
+  · apply toList_noDup
+  · constructor
+    · rintro a G ⟨⟩
+      rw [mem_toList] at G
+      apply H G
+    · apply toList_noDup
+
+/-- Converting a duplicate-free list and back yields a permutation of the original.
+    Corresponds to Rocq's `set_to_list_to_set`. -/
+theorem toList_ofList {l : List A} (Hl : l.Nodup) :
+  List.Perm (toList (ofList l : S)) l := by
+  induction l with
+  | nil =>
+    rw [ofList_nil, toList_empty]
+  | cons x xs IH =>
+    rw [ofList_cons]
+    rw [List.perm_ext_iff_of_nodup]
+    · intro a
+      simp only [List.mem_cons]
+      simp only [List.nodup_cons] at Hl
+      have Hl' : x ∉ ofList (S := S) xs := by
+        intro C
+        apply Hl.left
+        rw [<-mem_ofList] at C
+        apply C
+      have t := toList_insert Hl'
+      rw [(List.perm_ext_iff_of_nodup _ _).mp t]
+      · simp only [List.mem_cons, mem_toList]
+        rw [<-mem_ofList]
+      · apply toList_noDup
+      · constructor
+        · intro b G
+          grind only [usr List.Perm.mem_iff]
+        · apply toList_noDup
+    · apply toList_noDup
+    · assumption
+
+/-- Membership in mapped set. Corresponds to Rocq's `elem_of_map`. -/
+theorem mem_map {S' : Type _} {B : Type _} [LawfulFiniteSet S' B] (f : A → B) (s : S) (x : B) :
+  x ∈ map (S' := S') f s ↔ ∃ y, f y = x ∧ y ∈ s := by
+  simp only [map]
+  rw [<-mem_ofList, List.mem_map]
+  grind only [mem_toList]
+
+/-- Mapping over empty set yields empty set. Corresponds to Rocq's `map_empty`. -/
+@[simp]
+theorem map_empty {S' : Type _} {B : Type _} [LawfulFiniteSet S' B] (f : A → B) :
+  map (S' := S') f (∅ : S) = ∅ := by
+  ext x; rw [mem_map]; simp [mem_empty]
+
+/-- Mapping identity yields original set. Corresponds to Rocq's `map_id`. -/
+@[simp]
+theorem map_id {S' : Type _} {B : Type _} [LawfulFiniteSet S' B] (s : S) :
+  map (S' := S) id s = s := by
+  ext x; rw [mem_map]; simp
+
+/-- Mapping composed functions equals composing mapped functions.
+    Corresponds to Rocq's `map_compose`. -/
+theorem map_comp {S' S'' : Type _} {B C : Type _} [LawfulFiniteSet S' B] [LawfulFiniteSet S'' C]
+  (f : A → B) (g : B → C) (s : S) :
+  map (S' := S'') (g ∘ f) s = map (S' := S'') g (map (S' := S') f s) := by
+  ext x; rw [mem_map, mem_map]; grind [mem_map]
+
+/-- Map distributes over union. Corresponds to Rocq's `map_union`. -/
+theorem map_union [LawfulFiniteSet S' B]
+    (f : A → B) (s₁ s₂ : S) :
+  map (S' := S') f (s₁ ∪ s₂) = map f s₁ ∪ map f s₂ := by
+  ext y; rw [mem_map, mem_union, mem_map, mem_map]
+  apply Iff.intro
+  · intro ⟨x, hf, hx⟩; rw [mem_union] at hx; cases hx with
+    | inl hx => left; exists x
+    | inr hx => right; exists x
+  · grind only [mem_union]
+
+/-- Map over singleton. Corresponds to Rocq's `map_singleton`. -/
+theorem map_singleton [LawfulFiniteSet S' B]
+    (f : A → B) (x : A) :
+  map (S' := S') f ({x} : S) = {f x} := by
+  ext y; rw [mem_map, mem_singleton]
+  apply Iff.intro
+  · intro ⟨z, hf, hz⟩; rw [mem_singleton] at hz; subst hz; exact (Eq.symm hf)
+  · intro h; subst h; exists x; apply And.intro rfl; rw [mem_singleton]
+
+/-- Map preserves subset relation. -/
+theorem map_subset [LawfulFiniteSet S' B]
+    (f : A → B) (s₁ s₂ : S) :
+  s₁ ⊆ s₂ → map (S' := S') f s₁ ⊆ map (S' := S') f s₂ := by
+  intro h y hy; rw [mem_map] at hy ⊢
+  obtain ⟨x, hf, hx⟩ := hy
+  exists x; exact ⟨hf, h _ hx⟩
+
+/-- Permutation-equivalent lists convert to the same set. -/
+theorem ofList_congr {l l' : List A} :
+  List.Perm l l' → (ofList l : S) = ofList l' := by
+  intro H; ext x
+  rw [<-mem_ofList, <-mem_ofList]
+  induction H <;> grind only [List.mem_cons]
+
+/-- Membership in bind. Corresponds to Rocq's `elem_of_set_bind`. -/
+theorem mem_bind {S' : Type _} {B : Type _} [LawfulFiniteSet S' B]
+    (f : A → S') (X : S) (y : B) :
+    y ∈ bind (S' := S') f X ↔ ∃ x, x ∈ X ∧ y ∈ (f x) := by
+  simp only [bind]
+  rw [<-mem_ofList, List.mem_flatMap]
+  apply Iff.intro
+  · intro ⟨x, hx_in, hy_in⟩
+    grind only [mem_toList]
+  · intro ⟨x, hx, hy⟩
+    grind only [mem_toList]
+
+/-- Bind over empty set is empty. Corresponds to Rocq's `bind_empty`. -/
+@[simp]
+theorem bind_empty [LawfulFiniteSet S' B]
+    (f : A → S') :
+  bind (S' := S') f (∅ : S) = ∅ := by
+  ext y; rw [mem_bind]; simp [mem_empty]
+
+/-- Bind over singleton. Corresponds to Rocq's `bind_singleton`. -/
+@[simp]
+theorem bind_singleton [LawfulFiniteSet S' B]
+    (f : A → S') (x : A) :
+  bind (S' := S') f ({x} : S) = f x := by
+  ext y; rw [mem_bind]; apply Iff.intro
+  · intro ⟨z, hz, hy⟩; rw [mem_singleton] at hz; subst hz; exact hy
+  · intro hy; exists x; apply And.intro; rw [mem_singleton]; exact hy
+
+/-- Bind distributes over union. Corresponds to Rocq's `bind_union`. -/
+theorem bind_union [LawfulFiniteSet S' B]
+    (f : A → S') (s₁ s₂ : S) :
+  bind (S' := S') f (s₁ ∪ s₂) = bind f s₁ ∪ bind f s₂ := by
+  ext y; rw [mem_bind, mem_union, mem_bind, mem_bind]
+  apply Iff.intro <;> grind only [mem_union]
+
+/-- A set has size 0 iff it is empty. Corresponds to Rocq's `size_empty_iff`. -/
+theorem size_empty {X : S} : size X = 0 ↔ X = ∅ := by
+  simp only [size]
+  apply Iff.intro
+  · intro H
+    ext x; simp [mem_empty]; intro G
+    rw [<-mem_toList] at G
+    revert H G
+    induction (toList X) <;> simp
+  · rintro ⟨⟩
+    rw [toList_empty]; simp
+
+/-- Corresponds to Rocq's `set_choose`. -/
+theorem set_choose (X : S) (h : size X ≠ 0) : ∃ x, x ∈ X := by
+  unfold size at h
+  cases hlist : toList X with
+  | nil =>
+    rw [hlist] at h
+    simp at h
+  | cons x l =>
+    exists x
+    have : x ∈ toList X := by rw [hlist]; exact List.mem_cons_self ..
+    exact (mem_toList).mp this
+
+/-- toList of union when disjoint (up to permutation). -/
+theorem toList_union (X Y : S) (h : X ## Y) :
+    ∃ l', (toList (X ∪ Y)).Perm (toList X ++ l') ∧
+          (toList Y).Perm l' := by
+  exists toList Y
+  constructor
+  · show (toList (X ∪ Y)).Perm (toList X ++ toList Y)
+    have hnodupX := toList_noDup (s := X)
+    have hnodupY := toList_noDup (s := Y)
+    have hconcat_nodup : (toList X ++ toList Y).Nodup := by
+      apply List.nodup_append.mpr
+      constructor
+      · exact hnodupX
+      constructor
+      · exact hnodupY
+      · intro a ha b hb hab
+        subst hab
+        rw [mem_toList] at ha hb
+        exact h a ⟨ha, hb⟩
+    have hperm := @toList_ofList S A _ (toList X ++ toList Y) hconcat_nodup
+    rw [ofList_concat, ofList_toList, ofList_toList] at hperm
+    apply hperm
+  · exact List.Perm.refl _
+
+/-- Corresponds to Rocq's `size_union`. -/
+theorem size_union {X Y : S} (h : X ## Y) : size X + size Y = size (X ∪ Y) := by
+  simp only [size]
+  obtain ⟨l', hperm, hperm'⟩ := toList_union X Y h
+  rw [hperm.length_eq, List.length_append, hperm'.length_eq]
+
+/-- Proper subsets have strictly smaller size. Corresponds to Rocq's `subseteq_size`. -/
+theorem size_ssubset {X Y : S} (h : X ⊂ Y) : size X < size Y := by
+  have heq : Y = Y \ X ∪ X := by
+    apply diff_subset_decomp
+    rw [ssubset_subset] at h
+    exact h.left
+  rw [heq]; clear heq
+  rw [<-size_union]
+  · have : size (Y \ X) > 0 := by
+      false_or_by_contra; rename_i G; simp only [gt_iff_lt, Nat.not_lt, Nat.le_zero_eq] at G
+      rw [size_empty] at G
+      rw [ssubset_subset] at h
+      apply h.right
+      ext x
+      apply Iff.intro
+      · intro J
+        apply h.left _ J
+      · intro J
+        by_cases hin : x ∈ X
+        · assumption
+        · exfalso
+          have : x ∈ Y \ X ↔ x ∈ (∅ : S) := by
+            rw [G]
+          rw [mem_diff] at this
+          grind only [mem_empty]
+    omega
+  · rw [disjoint_intersection]
+    ext p; rw [mem_inter, mem_diff]; simp [mem_empty]
+
+/-- Size of singleton is 1. Corresponds to Rocq's `size_singleton`. -/
+theorem size_singleton {x : A} : size ({x} : S) = 1 := by
+  unfold size
+  rw [singleton_insert]
+  have : x ∉ (∅ : S) := mem_empty
+  have h := toList_insert this
+  rw [h.length_eq, toList_empty]; rfl
+
+/-- Size of insert when element not present. Corresponds to Rocq's `size_union_alt`. -/
+theorem size_insert_not_mem {s : S} {x : A} :
+  x ∉ s → size (insert x s) = size s + 1 := by
+  intro h
+  unfold size
+  have hperm := toList_insert h
+  rw [hperm.length_eq]; rfl
+
+/-- Size of insert when element already present. -/
+theorem size_insert_mem {s : S} {x : A} :
+  x ∈ s → size (insert x s) = size s := by
+  intro h
+  have : insert x s = s := insert_idem h
+  rw [this]
+
+/-- Non-empty sets have positive size. -/
+theorem size_pos {s : S} : s ≠ ∅ → size s > 0 := by
+  intro h
+  rw [nonempty_iff] at h
+  obtain ⟨x, hx⟩ := h
+  have : size s ≠ 0 := by
+    intro h; rw [size_empty] at h; subst h; exact mem_empty hx
+  omega
+
+/-- Subset implies size inequality. Corresponds to Rocq's `subseteq_size`. -/
+theorem size_subset {s₁ s₂ : S} : s₁ ⊆ s₂ → size s₁ ≤ size s₂ := by
+  intro h
+  by_cases heq : s₁ = s₂
+  · subst heq; apply Nat.le_refl
+  · have : s₁ ⊂ s₂ := by rw [ssubset_subset]; exact ⟨h, heq⟩
+    exact Nat.le_of_lt (size_ssubset this)
+
+/-- Well-founded relation on finite sets based on proper subset.
+    Corresponds to Rocq's `set_wf`. -/
+theorem set_wf : WellFounded (SSubset (α := S)) := by
+  apply Subrelation.wf
+  · intro X Y hrel
+    exact (size_ssubset hrel)
+  · exact (measure (size (S := S) (A := A))).wf
+
+/-- Induction principle for finite sets.
+    Corresponds to Rocq's `set_ind`. -/
+theorem set_ind {P : S → Prop}
+    (hemp : P ∅)
+    (hadd : ∀ x X, x ∉ X → P X → P (insert x X))
+    (X : S) : P X := by
+  apply WellFounded.induction set_wf X
+  intro Y IH
+  by_cases hempty : size Y = 0
+  · rw [size_empty] at hempty
+    subst hempty
+    apply hemp
+  · obtain ⟨x, hmem⟩ := set_choose Y hempty
+    let Y' := Y \ {x}
+    have hnotin : x ∉ Y' := by
+      subst Y'
+      simp [mem_diff, mem_singleton]
+    have hPY' : P Y' := by
+      apply IH
+      subst Y'
+      rw [ssubset_subset]
+      apply And.intro
+      · intro p; rw [mem_diff, mem_singleton]
+        grind only
+      · intro H; rw [<-H] at hmem
+        rw [mem_diff, mem_singleton] at hmem
+        apply hmem.right rfl
+    have heq : Y =  {x} ∪ Y' := by
+      ext z
+      subst Y'
+      rw [mem_union, mem_singleton, mem_diff, mem_singleton]
+      rw [mem_diff, mem_singleton] at hnotin
+      grind only
+    have : P ({x} ∪ Y') := by
+      rw [singleton_insert, insert_union, union_empty_left]
+      apply hadd
+      · subst Y'; rw [mem_diff, mem_singleton]
+        rintro ⟨_, H⟩; apply H rfl
+      · assumption
+    rw [heq]
+    exact this
+
+end FinLemmas
+
+/-! ## Grind Tactic Hints
+
+This section configures the `grind` tactic to automatically solve common set propositions.
+The hints are registered globally and enable grind to reason about:
+- Set membership (∈, ∉)
+- Set operations (∪, ∩, \, insert, filter)
+- Subset relations (⊆)
+- Disjointness (##)
+- Quantifiers over sets (setForall, setExists)
+
+## Usage
+
+The hints are active whenever this file is imported. You can:
+1. Use `grind` alone for automatic solving
+2. Pass explicit hints: `grind [mem_singleton, union_comm]`
+
+**Note**: If you don't want these hints active, you can either:
+- Avoid importing this file
+- Pass explicit lemmas to grind when needed
+-/
+section GrindHints
+-- Core membership characterizations
+attribute [grind] mem_empty mem_singleton mem_union mem_inter
+                  mem_diff mem_insert_eq
+-- Note: mem_filter cannot be registered due to set-builder notation pattern
+
+-- Normalization
+attribute [grind] union_empty_right
+
+-- Subset relations
+attribute [grind] subset_refl subset_trans empty_subset
+                  union_subset_left union_subset_right
+                  insert_subset insert_subset_subset
+
+-- Disjointness
+attribute [grind] disjoint_empty_left disjoint_empty_right
+                  disjoint_singleton_left disjoint_singleton_right
+
+-- Quantifiers over sets
+attribute [grind] setForall_empty setExists_empty
+                  setForall_singleton setExists_singleton
+
+end GrindHints
+/-! ## Grind Tactic Tests
+
+These examples demonstrate that grind can automatically solve common set goals.
+-/
+
+section GrindTests
+
+variable {S : Type _} {A : Type _} [LawfulSet S A]
+
+-- Test 1: Membership in singleton
+example {x : A} : x ∈ ({x} : S) := by
+  grind
+
+-- Test 2: Non-membership in empty set
+example {x : A} : x ∉ (∅ : S) := by
+  grind
+
+-- Test 3: Union commutativity via extensionality
+example {s₁ s₂ : S} : s₁ ∪ s₂ = s₂ ∪ s₁ := by
+  grind [union_comm]
+
+-- Test 4: Empty set is subset of any set
+example {s : S} : (∅ : S) ⊆ s := by
+  grind
+
+-- Test 5: Subset reflexivity
+example {s : S} : s ⊆ s := by
+  grind
+
+-- Test 6: Union with empty set
+example {s : S} : s ∪ ∅ = s := by
+  grind
+
+-- Test 7: Membership in union
+example {s : S} {x : A} : x ∈ s → x ∈ s ∪ {x} := by
+  grind
+
+-- Test 8: Disjointness with empty set
+example {s : S} : s ## (∅ : S) := by
+  grind
+
+-- Test 9: setForall on empty set is trivially true
+example {P : A → Prop} : setForall P (∅ : S) := by
+  grind
+
+-- Test 10: setExists on singleton reduces to the predicate
+example {P : A → Prop} {x : A} : setExists P ({x} : S) ↔ P x := by
+  grind
+
+-- Test 11: Multiple inserts - membership in doubly-inserted set
+example {x y z : A} : x ∈ insert y (insert z (∅ : S)) ↔ x = y ∨ x = z := by
+  grind
+
+-- Test 12: Insert commutativity via membership
+example {x y z : A} : z ∈ insert x (insert y (∅ : S)) ↔ z ∈ insert y (insert x (∅ : S)) := by
+  grind
+
+-- Test 13: Subset with inserts on both sides
+example {x y : A} {s : S} : insert x s ⊆ insert x (insert y s) := by
+  grind
+
+-- Test 14: Union of singletons contains both elements
+example {x y z : A} : z ∈ ({x} : S) ∪ {y} ↔ z = x ∨ z = y := by
+  grind
+
+-- Test 15: Intersection with insert and singleton
+example {x y : A} {s : S} : x ∈ s → x ≠ y → x ∈ s ∩ (insert y s) := by
+  grind
+
+-- Test 16: Difference removes inserted element
+example {x y : A} : x ≠ y → x ∈ (({x} : S) ∪ {y}) \ {y} := by
+  grind
+
+-- Test 17: Disjointness of complementary singletons
+example {x y : A} : x ≠ y → ({x} : S) ## {y} := by
+  grind
+
+-- Test 18: Complex union associativity via membership
+example {x : A} {s₁ s₂ s₃ : S} :
+  x ∈ (s₁ ∪ s₂) ∪ s₃ ↔ x ∈ s₁ ∪ (s₂ ∪ s₃) := by
+  grind
+
+-- Test 19: Subset transitivity with inserts
+example {x y : A} {s : S} : s ⊆ insert x s ∧ insert x s ⊆ insert x (insert y s) := by
+   grind
+
+-- Test 20: setForall on union of singletons
+example {P : A → Prop} {x y : A} :
+  setForall P (({x} : S) ∪ {y}) ↔ P x ∧ P y := by
+  grind [setForall_union]
+
+-- Test 21: Concrete subset of concrete set
+example {x1 x2 x3 x4 x5 : A} :
+  ({x5, x3, x1} : S) ⊆ {x1, x2, x3, x4, x5} := by
+  simp only [Subset]; grind
+
+end GrindTests
+
+end Iris.Std.Set

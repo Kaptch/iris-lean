@@ -410,3 +410,28 @@ instance except0_persistent [BI PROP] (P : PROP) [Persistent P] : Persistent ipr
 
 instance except0_absorbing [BI PROP] (P : PROP) [Absorbing P] : Absorbing iprop(◇ P) :=
   inferInstanceAs (Absorbing iprop(_ ∨ _))
+
+/-- `▷` is a monoid homomorphism for `∧`/`True` with respect to `≡`. -/
+instance bi_later_and_homomorphism [BI PROP] :
+    Algebra.MonoidHomomorphism BIBase.and BIBase.and iprop(True) iprop(True)
+      (· ≡ ·) (@BIBase.later PROP _) where
+  rel_refl _ := OFE.Equiv.rfl
+  rel_trans h1 h2 := h1.trans h2
+  rel_proper h1 h2 := ⟨fun h => h1.symm.trans (h.trans h2), fun h => h1.trans (h.trans h2.symm)⟩
+  op_proper h1 h2 := equiv_iff.mpr (and_congr (equiv_iff.mp h1) (equiv_iff.mp h2))
+  f_ne := later_ne
+  homomorphism _ _ := equiv_iff.mpr later_and
+  map_unit := equiv_iff.mpr later_true
+
+/-- `▷` is a weak monoid homomorphism for `∨`/`False` with respect to `≡`. -/
+instance bi_later_or_weak_homomorphism [BI PROP] :
+    Algebra.WeakMonoidHomomorphism BIBase.or BIBase.or iprop(False) iprop(False)
+      (· ≡ ·) (@BIBase.later PROP _) where
+  rel_refl _ := OFE.Equiv.rfl
+  rel_trans h1 h2 := h1.trans h2
+  rel_proper h1 h2 := ⟨fun h => h1.symm.trans (h.trans h2), fun h => h1.trans (h.trans h2.symm)⟩
+  op_proper h1 h2 := equiv_iff.mpr (or_congr (equiv_iff.mp h1) (equiv_iff.mp h2))
+  f_ne := later_ne
+  homomorphism _ _ := equiv_iff.mpr later_or
+
+end Iris.BI

@@ -799,7 +799,7 @@ open FiniteMap LawfulFiniteMap PartialMap LawfulPartialMap
 
 theorem mapFold_empty {f : K → V → A → A} :
   mapFold f a (∅ : M V) = a := by
-  simp only [mapFold, Std.toList, toList_empty (M := M) (K := K) (V := V)]
+  simp only [mapFold, Std.toList, toList_empty]
   rfl
 
 -- TODO: These should be theorems
@@ -860,7 +860,7 @@ theorem induction_on [DecidableEq K] {P : M V → Prop}
         (List.mem_map_of_mem (f := Prod.fst) (a := (kv.1, v)) hv)
     · exact ih (noDupKeys_cons hnd)
 
-theorem mem_of_mem_ofList [DecidableEq K] {l : List (K × V)} {i : K} {x : V}
+theorem mem_of_mem_ofList {l : List (K × V)} {i : K} {x : V}
     (H : get? (ofList l : M V) i = some x) : (i, x) ∈ l := by
   induction l
   · simp [ofList, get?_empty] at H
