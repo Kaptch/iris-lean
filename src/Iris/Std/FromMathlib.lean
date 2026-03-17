@@ -156,6 +156,23 @@ A multiset is represented as a quotient of lists under permutation equivalence.
     Represented as a quotient of `List α` by permutation. -/
 def Multiset (α : Type u) : Type u := Quotient (List.isSetoid α)
 
+/-- A binary operation is left-commutative if `f (f acc x) y = f (f acc y) x`.
+    This is the condition needed for fold to be well-defined on sets. -/
+def LeftCommutative (f : β → α → β) : Prop :=
+  ∀ acc x y, f (f acc x) y = f (f acc y) x
+
+/-- Helper lemma: left-commutative foldl respects permutations -/
+theorem List.foldl_perm_of_leftComm {f : β → α → β} (hcomm : LeftCommutative f)
+    {l₁ l₂ : List α} (h : l₁.Perm l₂) (init : β) :
+    l₁.foldl f init = l₂.foldl f init := by
+  induction h generalizing init with
+  | nil => rfl
+  | cons _ _ ih => simp [List.foldl]; exact ih (f init _)
+  | swap x y l =>
+    simp only [List.foldl]
+    rw [hcomm]
+  | trans _ _ ih₁ ih₂ => exact Eq.trans (ih₁ init) (ih₂ init)
+
 namespace Multiset
 
 variable {α : Type _}
@@ -205,6 +222,20 @@ theorem size_empty : size (∅ : Multiset α) = 0 := by rfl
 theorem nodup_empty : Nodup (∅ : Multiset α) :=
   List.nodup_nil
 
+/-- Singleton finset -/
+def singleton (a : α) : Multiset α :=
+  ofList [a]
+
+instance : Singleton α (Multiset α) where
+  singleton := singleton
+
+@[simp]
+theorem size_singleton : size ({x} : Multiset α) = 1 := by rfl
+
+@[simp]
+theorem nodup_singleton : Nodup ({x} : Multiset α) :=
+  List.nodup_cons.mpr ⟨(List.mem_nil_iff _).mp, List.nodup_nil⟩
+
 /-! ### Induction principles -/
 
 /-- Induction principle for multisets: to prove a property for all multisets,
@@ -233,6 +264,34 @@ protected def lift₂ {β γ : Type _} (f : List α → List β → γ)
       l₁.Perm l₃ → l₂.Perm l₄ → f l₁ l₂ = f l₃ l₄) :
     Multiset α → Multiset β → γ :=
   Quotient.lift₂ f h
+
+/-! ### Fold operation -/
+
+/-- Fold over a multiset with a left-commutative operation.
+    The operation must be left-commutative to ensure the result is independent
+    of the order of elements.
+-/
+def fold {α β : Type _} (f : β → α → β) (hcomm : LeftCommutative f)
+    (init : β) (s : Multiset α) : β :=
+  Quotient.liftOn s
+    (fun l => l.foldl f init)
+    (fun _ _ perm => List.foldl_perm_of_leftComm hcomm perm init)
+
+@[simp]
+theorem fold_empty {f : β → α → β} {hcomm : LeftCommutative f} {init : β} :
+    fold f hcomm init ∅ = init := by
+  rfl
+
+@[simp]
+theorem fold_singleton {f : β → α → β} {hcomm : LeftCommutative f} {init : β} {a : α} :
+    fold f hcomm init {a} = f init a := by
+  rfl
+
+/-- Basic computation lemma: fold on ofList reduces to list foldl -/
+theorem fold_ofList (f : β → α → β) (hcomm : LeftCommutative f)
+    (init : β) (l : List α) :
+    fold f hcomm init (ofList l) = l.foldl f init := by
+  rfl
 
 /-! ### Map operation -/
 
@@ -294,37 +353,24 @@ namespace Finset
 
 variable {α : Type _}
 
+def Mem (a : α) (s : Finset α) : Prop :=
+  a ∈ s.val
+
 /-- Membership in a finset -/
-instance : Membership α (Finset α) where
-  mem s a := a ∈ s.val
+local instance inst_mem : Membership α (Finset α) where
+  mem s a := Mem a s
 
 @[simp]
 theorem mem_def {a : α} {s : Finset α} : a ∈ s ↔ a ∈ s.val := by
   rfl
 
 /-- The empty finset -/
-instance : EmptyCollection (Finset α) where
+local instance inst_empty : EmptyCollection (Finset α) where
   emptyCollection := ⟨∅, Multiset.nodup_empty⟩
 
 @[simp]
 theorem mem_empty {a : α} : ¬(a ∈ (∅ : Finset α)) := by
   exact Multiset.mem_empty
-
-/-- Subset relation on finsets. -/
-def subset (s t : Finset α) : Prop := ∀ ⦃x⦄, x ∈ s → x ∈ t
-
-instance : HasSubset (Finset α) where
-  Subset := subset
-
-@[simp]
-theorem subset_def {s t : Finset α} : s ⊆ t ↔ ∀ ⦃x⦄, x ∈ s → x ∈ t := Iff.rfl
-
-theorem subset_refl (s : Finset α) : s ⊆ s := fun _ h => h
-
-theorem subset_trans {s t u : Finset α} : s ⊆ t → t ⊆ u → s ⊆ u :=
-  fun h₁ h₂ _ hx => h₂ (h₁ hx)
-
-theorem empty_subset (s : Finset α) : ∅ ⊆ s := fun _ h => absurd h mem_empty
 
 /-- Extensionality for finsets -/
 @[ext]
@@ -350,7 +396,7 @@ def ofList (l : List α) (nd : l.Nodup) : Finset α :=
 @[simp]
 theorem mem_ofList {l : List α} {nd : l.Nodup} {a : α} :
     a ∈ ofList l nd ↔ a ∈ l := by
-  simp [ofList, Membership.mem, Multiset.Mem, Multiset.ofList]
+  simp [ofList, Membership.mem, Mem, Multiset.Mem, Multiset.ofList]
 
 @[simp]
 theorem card_ofList {l : List α} {nd : l.Nodup} :
@@ -361,7 +407,7 @@ theorem card_ofList {l : List α} {nd : l.Nodup} :
 def singleton (a : α) : Finset α :=
   ofList [a] (by simp [List.Nodup])
 
-instance : Singleton α (Finset α) where
+local instance inst_singleton : Singleton α (Finset α) where
   singleton := singleton
 
 @[simp]
@@ -431,7 +477,7 @@ def insert [DecidableEq α] (a : α) (s : Finset α) : Finset α :=
     · simp [h]; exact nd
     · simp [h]; exact List.nodup_cons.mpr ⟨h, nd⟩⟩
 
-instance [DecidableEq α] : Insert α (Finset α) where
+local instance inst_insert [DecidableEq α] : Insert α (Finset α) where
   insert := insert
 
 @[simp]
@@ -480,7 +526,7 @@ def union [DecidableEq α] (s t : Finset α) : Finset α :=
       subst heq
       exact ha.2 hb⟩
 
-instance [DecidableEq α] : Union (Finset α) where
+local instance inst_union [DecidableEq α] : Union (Finset α) where
   union := union
 
 @[simp]
@@ -523,7 +569,7 @@ def inter [DecidableEq α] (s t : Finset α) : Finset α :=
     simp only [Multiset.lift₂, Quotient.lift₂, ofList, Multiset.ofList]
     exact Nodup.filter _ nd₁⟩
 
-instance [DecidableEq α] : Inter (Finset α) where
+local instance inst_inter [DecidableEq α] : Inter (Finset α) where
   inter := inter
 
 @[simp]
@@ -557,7 +603,7 @@ def sdiff [DecidableEq α] (s t : Finset α) : Finset α :=
     simp only [Multiset.lift₂, Quotient.lift₂, ofList, Multiset.ofList]
     exact Nodup.filter _ nd₁⟩
 
-instance [DecidableEq α] : SDiff (Finset α) where
+local instance inst_sdiff [DecidableEq α] : SDiff (Finset α) where
   sdiff := sdiff
 
 @[simp]
@@ -568,34 +614,12 @@ theorem mem_sdiff [DecidableEq α] {a : α} {s t : Finset α} :
   show a ∈ (l₁.filter (· ∉ l₂) : Multiset α) ↔ a ∈ (l₁ : Multiset α) ∧ a ∉ (l₂ : Multiset α)
   simp only [Multiset.mem_coe, List.mem_filter, decide_eq_true_eq]
 
-/-! ### Fold operation -/
-
-/-- A binary operation is left-commutative if `f (f acc x) y = f (f acc y) x`.
-    This is the condition needed for fold to be well-defined on sets. -/
-def LeftCommutative (f : β → α → β) : Prop :=
-  ∀ acc x y, f (f acc x) y = f (f acc y) x
-
-/-- Helper lemma: left-commutative foldl respects permutations -/
-theorem List.foldl_perm_of_leftComm {f : β → α → β} (hcomm : LeftCommutative f)
-    {l₁ l₂ : List α} (h : l₁.Perm l₂) (init : β) :
-    l₁.foldl f init = l₂.foldl f init := by
-  induction h generalizing init with
-  | nil => rfl
-  | cons _ _ ih => simp [List.foldl]; exact ih (f init _)
-  | swap x y l =>
-    simp only [List.foldl]
-    rw [hcomm]
-  | trans _ _ ih₁ ih₂ => exact Eq.trans (ih₁ init) (ih₂ init)
-
 /-- Fold over a finite set with a left-commutative operation.
     The operation must be left-commutative to ensure the result is independent
     of the order of elements.
 -/
 def fold {α β : Type _} (f : β → α → β) (hcomm : LeftCommutative f)
-    (init : β) (s : Finset α) : β :=
-  Quotient.liftOn s.val
-    (fun l => l.foldl f init)
-    (fun _ _ perm => List.foldl_perm_of_leftComm hcomm perm init)
+    (init : β) (s : Finset α) : β := s.val.fold f hcomm init
 
 @[simp]
 theorem fold_empty {f : β → α → β} {hcomm : LeftCommutative f} {init : β} :
@@ -612,6 +636,78 @@ theorem fold_ofList (f : β → α → β) (hcomm : LeftCommutative f)
     (init : β) (l : List α) (nd : l.Nodup) :
     fold f hcomm init (ofList l nd) = l.foldl f init := by
   rfl
+
+def map {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → β) (s : Finset α) : Finset β :=
+  s.fold (fun x y => {f y} ∪ x)
+  (by
+    intro acc x y; simp only
+    ext el; simp only [mem_union, mem_singleton]
+    apply Iff.intro
+    · rintro (heq | heq | hin)
+      · subst heq; right; left; rfl
+      · subst heq; left; rfl
+      · right; right; exact hin
+    · rintro (heq | heq | hin)
+      · subst heq; right; left; rfl
+      · subst heq; left; rfl
+      · right; right; exact hin)
+  ∅
+
+theorem map_nil {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → β) :
+  map f (ofList [] List.nodup_nil) = (ofList [] List.nodup_nil) := by rfl
+
+private theorem foldl_union_distrib {β : Type _} [DecidableEq β]
+    (f : α → β) (s t : Finset β) (xs : List α) :
+    List.foldl (fun acc y => {f y} ∪ acc) (s ∪ t) xs =
+    s ∪ List.foldl (fun acc y => {f y} ∪ acc) t xs := by
+  induction xs generalizing s t with
+  | nil => rfl
+  | cons x xs IH =>
+    simp only [List.foldl_cons]
+    rw [IH]
+    ext el
+    simp only [mem_union, mem_singleton]
+    grind only [= mem_union, = mem_singleton]
+
+theorem map_cons {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → β)  (hnd : (x :: xs).Nodup) :
+  map f (ofList (x :: xs) hnd) = {f x} ∪ map f (ofList xs (List.nodup_cons.mp hnd).right) := by
+    simp [map, fold, Multiset.fold, ofList, Multiset.ofList]
+    simp [Quotient.liftOn, Quot.liftOn]
+    clear hnd
+
+    induction xs with
+    | nil => rfl
+    | cons y xs IH =>
+      simp only [List.foldl_cons]
+      have h := foldl_union_distrib f {f x} {f y} xs
+      calc List.foldl (fun acc y => {f y} ∪ acc) ({f y} ∪ ({f x} ∪ ∅)) xs
+          = List.foldl (fun acc y => {f y} ∪ acc) ({f x} ∪ {f y}) xs := by
+            congr 1
+            ext el
+            simp only [mem_union, mem_singleton, mem_empty, or_false]
+            grind only [= mem_union, = mem_singleton]
+        _ = {f x} ∪ List.foldl (fun acc y => {f y} ∪ acc) {f y} xs := h
+        _ = {f x} ∪ List.foldl (fun acc y => {f y} ∪ acc) ({f y} ∪ ∅) xs := by congr 2
+        _ = {f x} ∪ List.foldl (fun x y => {f y} ∪ x) ({f y} ∪ ∅) xs := rfl
+
+theorem mem_map {β : Type _} [DecidableEq α] [DecidableEq β]
+    {f : α → β} {s : Finset α} {b : β} :
+    b ∈ map f s ↔ ∃ a, a ∈ s ∧ f a = b := by
+  induction s using Finset.ind with | h l hnd =>
+  induction l with
+  | nil =>
+    rw [map_nil]
+    simp only [mem_def, ofList, Multiset.mem_coe, List.not_mem_nil, false_and, exists_false]
+  | cons x xs IH =>
+    rw [map_cons, mem_union, IH, mem_singleton]
+    simp only [ofList, mem_def, Multiset.mem_coe, List.mem_cons, exists_eq_or_imp]
+    apply Iff.intro
+    · rintro (heq | ⟨a, h1, h2⟩)
+      · subst heq; left; rfl
+      · subst h2; right; exists a
+    · rintro (heq | ⟨a, h1, h2⟩)
+      · subst heq; left; rfl
+      · subst h2; right; exists a
 
 end Finset
 
