@@ -216,9 +216,6 @@ theorem mem_empty {a : α} : ¬(a ∈ (∅ : Multiset α)) := by
   intro h; cases h
 
 @[simp]
-theorem size_empty : size (∅ : Multiset α) = 0 := by rfl
-
-@[simp]
 theorem nodup_empty : Nodup (∅ : Multiset α) :=
   List.nodup_nil
 
@@ -264,6 +261,20 @@ protected def lift₂ {β γ : Type _} (f : List α → List β → γ)
       l₁.Perm l₃ → l₂.Perm l₄ → f l₁ l₂ = f l₃ l₄) :
     Multiset α → Multiset β → γ :=
   Quotient.lift₂ f h
+
+@[simp]
+theorem size_empty : S = ∅ ↔ size (S : Multiset α) = 0 := by
+  induction S using Multiset.ind with | h a =>
+  simp only [card_coe, List.length_eq_zero_iff, EmptyCollection.emptyCollection]
+  simp only [ofList]
+  cases a with
+  | nil => simp
+  | cons x xs =>
+    simp only [reduceCtorEq, iff_false]
+    intro heq
+    have t : List.Perm (x :: xs) [] := Quotient.exact heq
+    rw [List.perm_nil] at t
+    simp at t
 
 /-! ### Fold operation -/
 
@@ -386,8 +397,19 @@ theorem ext {s t : Finset α} (h : ∀ a, a ∈ s ↔ a ∈ t) : s = t := by
 def card (s : Finset α) : Nat := Multiset.size s.val
 
 @[simp]
-theorem card_empty : card (∅ : Finset α) = 0 := by
-  exact Multiset.size_empty
+theorem card_empty : S = ∅ ↔ card (S : Finset α) = 0 := by
+  simp only [card]
+  rw [<-Multiset.size_empty]
+  constructor
+  · intro h
+    subst h
+    rfl
+  · intro h
+    cases S with | mk val nodup =>
+    cases val using Multiset.ind with | h l =>
+    cases l with
+    | nil => rfl
+    | cons hd tl => simp [List.length] at h
 
 /-- Create a finset from a list with no duplicates -/
 def ofList (l : List α) (nd : l.Nodup) : Finset α :=
@@ -537,6 +559,31 @@ theorem mem_union [DecidableEq α] {a : α} {s t : Finset α} :
       · exact Or.inl ⟨h, hm⟩
     | Or.inr h => exact Or.inr h
 
+/-- Cardinality of disjoint union. -/
+theorem card_union [DecidableEq α] {s t : Finset α} (h : ∀ x, ¬(x ∈ s ∧ x ∈ t)) :
+    card (s ∪ t) = card s + card t := by
+  induction s using Finset.ind with | h l₁ nd₁ =>
+  induction t using Finset.ind with | h l₂ nd₂ =>
+  simp only [card, union, inst_union]
+  simp only [Multiset.lift₂, Quotient.lift₂, ofList, Multiset.ofList]
+  show Multiset.size (Quot.mk _ (List.filter (fun x => decide (x ∉ l₂)) l₁ ++ l₂)) =
+       Multiset.size (Quot.mk _ l₁) + Multiset.size (Quot.mk _ l₂)
+  show (List.filter (fun x => decide (x ∉ l₂)) l₁ ++ l₂).length = l₁.length + l₂.length
+  rw [List.length_append]
+  have disjoint : ∀ x, x ∈ l₁ → x ∉ l₂ := by
+    intro x hx₁
+    have : x ∈ (ofList l₁ nd₁ : Finset α) := by
+      rw [mem_ofList]
+      exact hx₁
+    intro hin
+    exact (h x ⟨this, hin⟩)
+  have filter_eq : List.filter (fun x => decide (x ∉ l₂)) l₁ = l₁ := by
+    apply List.filter_eq_self.mpr
+    intro x hx
+    simp only [decide_eq_true_eq]
+    exact disjoint x hx
+  rw [filter_eq]
+
 def inter [DecidableEq α] (s t : Finset α) : Finset α :=
   ⟨Multiset.lift₂ (fun l₁ l₂ => (l₁.filter (· ∈ l₂) : Multiset α))
     (fun l₁ l₂ l₃ l₄ p₁ p₂ => by
@@ -602,6 +649,14 @@ theorem mem_sdiff [DecidableEq α] {a : α} {s t : Finset α} :
   show a ∈ (l₁.filter (· ∉ l₂) : Multiset α) ↔ a ∈ (l₁ : Multiset α) ∧ a ∉ (l₂ : Multiset α)
   simp only [Multiset.mem_coe, List.mem_filter, decide_eq_true_eq]
 
+theorem ofList_nil : ofList [] List.nodup_nil = (∅ : Finset A) := by
+  rfl
+
+theorem ofList_cons [DecidableEq A] {hd : A} {nd : List.Nodup (hd :: tl)} :
+  ofList (hd :: tl) nd = {hd} ∪ ofList tl (List.nodup_cons.mp nd).right := by
+  ext a
+  simp only [mem_union, mem_singleton, mem_ofList, List.mem_cons]
+
 /-- Case analysis on a finset: either it's empty or it has at least one element. -/
 @[elab_as_elim]
 protected theorem cases_on [DecidableEq α] {p : Finset α → Prop} (s : Finset α)
@@ -612,17 +667,13 @@ protected theorem cases_on [DecidableEq α] {p : Finset α → Prop} (s : Finset
   induction l with
   | nil => exact h_empty
   | cons hd tl ih =>
-    have nd_tl : tl.Nodup := (List.nodup_cons.mp nd).right
     have hd_notin : hd ∉ tl := (List.nodup_cons.mp nd).left
-    have p_tl : p (ofList tl nd_tl) := ih nd_tl
-    have hd_notin_finset : hd ∉ (ofList tl nd_tl) := by
+    have hd_notin_finset : hd ∉ (ofList tl ((List.nodup_cons.mp nd).right)) := by
       simp; exact hd_notin
-    have step := h_add hd (ofList tl nd_tl) hd_notin_finset p_tl
-    have eq : ofList (hd :: tl) nd = {hd} ∪ ofList tl nd_tl := by
-      ext a
-      simp only [mem_union, mem_singleton, mem_ofList, List.mem_cons]
-    rw [eq]
-    exact step
+    rw [ofList_cons]
+    exact h_add hd (ofList tl ((List.nodup_cons.mp nd).right)) hd_notin_finset (ih ((List.nodup_cons.mp nd).right))
+
+
 
 /-- Fold over a finite set with a left-commutative operation.
     The operation must be left-commutative to ensure the result is independent
@@ -718,6 +769,107 @@ theorem mem_map {β : Type _} [DecidableEq α] [DecidableEq β]
     · rintro (heq | ⟨a, h1, h2⟩)
       · subst heq; left; rfl
       · subst h2; right; exists a
+
+/-- FlatMap (bind) operation for finsets. Maps each element to a finset and unions all results. -/
+def flatMap {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → Finset β) (s : Finset α) : Finset β :=
+  s.fold (fun acc x => f x ∪ acc)
+  (by
+    intro acc x y; simp only
+    ext el; simp only [mem_union]
+    apply Iff.intro
+    · rintro (hfx | hacc | hfy)
+      · right; left; exact hfx
+      · left; exact hacc
+      · right; right; exact hfy
+    · rintro (hacc | hfx | hfy)
+      · right; left; exact hacc
+      · left; exact hfx
+      · right; right; exact hfy)
+  ∅
+
+theorem flatMap_nil {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → Finset β) :
+  flatMap f (ofList [] List.nodup_nil) = (ofList [] List.nodup_nil) := by rfl
+
+private theorem foldl_union_distrib_finset {β : Type _} [DecidableEq β]
+    (f : α → Finset β) (s t : Finset β) (xs : List α) :
+    List.foldl (fun acc y => f y ∪ acc) (s ∪ t) xs =
+    s ∪ List.foldl (fun acc y => f y ∪ acc) t xs := by
+  induction xs generalizing s t with
+  | nil => rfl
+  | cons x xs IH =>
+    simp only [List.foldl_cons]
+    rw [IH]
+    ext el
+    simp only [mem_union]
+    grind only [= mem_union]
+
+theorem flatMap_cons {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → Finset β) (hnd : (x :: xs).Nodup) :
+  flatMap f (ofList (x :: xs) hnd) = f x ∪ flatMap f (ofList xs (List.nodup_cons.mp hnd).right) := by
+    simp [flatMap, fold, Multiset.fold, ofList, Multiset.ofList]
+    simp [Quotient.liftOn, Quot.liftOn]
+    clear hnd
+    induction xs with
+    | nil => rfl
+    | cons y xs IH =>
+      simp only [List.foldl_cons]
+      have h := foldl_union_distrib_finset f (f x) (f y) xs
+      calc List.foldl (fun acc y => f y ∪ acc) (f y ∪ (f x ∪ ∅)) xs
+          = List.foldl (fun acc y => f y ∪ acc) (f x ∪ f y) xs := by
+            congr 1
+            ext el
+            simp only [mem_union, mem_empty, or_false]
+            grind only [= mem_union]
+        _ = f x ∪ List.foldl (fun acc y => f y ∪ acc) (f y) xs := h
+        _ = f x ∪ List.foldl (fun acc y => f y ∪ acc) (f y ∪ ∅) xs := by
+            congr 2
+            ext el
+            simp only [mem_union, mem_empty, or_false]
+        _ = f x ∪ List.foldl (fun x y => f y ∪ x) (f y ∪ ∅) xs := rfl
+
+theorem mem_flatMap {β : Type _} [DecidableEq α] [DecidableEq β]
+    {f : α → Finset β} {s : Finset α} {b : β} :
+    b ∈ flatMap f s ↔ ∃ a, a ∈ s ∧ b ∈ f a := by
+  induction s using Finset.ind with | h l hnd =>
+  induction l with
+  | nil =>
+    rw [flatMap_nil]
+    simp only [mem_def, ofList, Multiset.mem_coe, List.not_mem_nil, false_and, exists_false]
+  | cons x xs IH =>
+    rw [flatMap_cons, mem_union, IH]
+    simp only [ofList, mem_def, Multiset.mem_coe, List.mem_cons, exists_eq_or_imp]
+
+@[simp]
+theorem flatMap_empty {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → Finset β) :
+  flatMap f ∅ = ∅ := by
+  rfl
+
+theorem flatMap_singleton {β : Type _} [DecidableEq α] [DecidableEq β] (f : α → Finset β) (a : α) :
+  flatMap f {a} = f a := by
+  ext x
+  rw [mem_flatMap]
+  simp only [mem_singleton]
+  constructor
+  · intro ⟨y, hy, hx⟩
+    subst hy
+    exact hx
+  · intro hx
+    exact ⟨a, rfl, hx⟩
+
+theorem flatMap_union {β : Type _} [DecidableEq α] [DecidableEq β]
+    (f : α → Finset β) (s t : Finset α) :
+  flatMap f (s ∪ t) = flatMap f s ∪ flatMap f t := by
+  ext b
+  rw [mem_flatMap, mem_union, mem_flatMap, mem_flatMap]
+  constructor
+  · intro ⟨a, ha, hb⟩
+    rw [mem_union] at ha
+    cases ha with
+    | inl ha => left; exact ⟨a, ha, hb⟩
+    | inr ha => right; exact ⟨a, ha, hb⟩
+  · intro h
+    cases h with
+    | inl h => obtain ⟨a, ha, hb⟩ := h; exact ⟨a, mem_union.mpr (Or.inl ha), hb⟩
+    | inr h => obtain ⟨a, ha, hb⟩ := h; exact ⟨a, mem_union.mpr (Or.inr ha), hb⟩
 
 end Finset
 
