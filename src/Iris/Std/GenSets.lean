@@ -73,18 +73,17 @@ instance FiniteSetIsLawfulSet [DecidableEq A] : LawfulSet (FromMathlib.Finset A)
   mem_inter := Finset.mem_inter
   mem_diff := Finset.mem_sdiff
 
-namespace Set
+section FiniteSet
 
 open FromMathlib
 
 variable {S : Type _} {A : Type _} [Set S A]
 
-/-- Subset relation: `S₁` is a subset of `S₂` if every element in `S₁` is also in `S₂`.
-    Corresponds to Rocq's `S₁ ⊆ S₂`. -/
+/-- Subset relation: `S₁` is a subset of `S₂` if every element in `S₁` is also in `S₂`. -/
 instance : HasSubset S := ⟨fun S₁ S₂ => ∀ x, x ∈ S₁ → x ∈ S₂⟩
 
 /-- Proper subset relation: `S₁` is a proper subset of `S₂` if every element in `S₁`
-    is in `S₂` but they are not equal. Corresponds to Rocq's `S₁ ⊂ S₂`. -/
+    is in `S₂` but they are not equal. -/
 instance : HasSSubset S := ⟨fun S₁ S₂ => S₁ ≠ S₂ ∧ ∀ x, x ∈ S₁ → x ∈ S₂⟩
 
 /-- Two sets are disjoint if they share no common elements.
@@ -92,20 +91,14 @@ instance : HasSSubset S := ⟨fun S₁ S₂ => S₁ ≠ S₂ ∧ ∀ x, x ∈ S�
 instance : Disjoint S where
   disjoint S₁ S₂ := ∀ x, ¬(x ∈ S₁ ∧ x ∈ S₂)
 
-/-- Finite set interface extending the abstract set interface with conversion to lists.
-    Every finite set can be converted to a list of its elements. -/
 class FiniteSet (S : Type _) (A : outParam (Type _)) extends LawfulSet S A where
   toCanonical : S → Finset A
 export FiniteSet (toCanonical)
 
-/-- Laws for finite sets extending lawful sets.
-    Ensures that `toList` produces a list without duplicates and that
-    membership in the list corresponds exactly to membership in the set. -/
 class LawfulFiniteSet (S : Type _) (A : outParam (Type _)) [DecidableEq A] extends LawfulSet S A, FiniteSet S A where
-  /-- Membership in the list corresponds to membership in the set. -/
   mem_toCanonical {k : A} : k ∈ toCanonical m ↔ k ∈ m
 
-end Set
+end FiniteSet
 
 namespace Set
 
@@ -189,7 +182,7 @@ theorem mem_diff_singleton : ∀ {s : S} {x y : A},
 
 /-- Disjoint sets have empty intersection and vice versa.
     Corresponds to Rocq's `disjoint_intersection`. -/
-theorem disjoint_intersection (X Y : S) : X ## Y ↔ X ∩ Y = ∅ := by
+theorem disjoint_intersection {X Y : S} : X ## Y ↔ X ∩ Y = ∅ := by
   simp only [Disjoint.disjoint]
   apply Iff.intro
   · intro H
@@ -390,9 +383,11 @@ theorem mem_insert_of_mem {s : S} {x y : A} : x ∈ s → x ∈ insert y s := by
   intro h; rw [mem_insert]; right; exact h
 
 /-- Disjointness is symmetric. Corresponds to Rocq's `disjoint_sym`. -/
-@[symm]
 theorem disjoint_comm {s₁ s₂ : S} : s₁ ## s₂ ↔ s₂ ## s₁ := by
   simp only [Disjoint.disjoint]; apply Iff.intro <;> (intro h x ⟨hx1, hx2⟩; exact h x ⟨hx2, hx1⟩)
+
+@[symm]
+theorem disjoint_symm {s₁ s₂ : S} : s₁ ## s₂ → s₂ ## s₁ := disjoint_comm.mp
 
 /-- Empty set is disjoint with any set (left). Corresponds to Rocq's `disjoint_empty_l`. -/
 theorem disjoint_empty_left {s : S} : ∅ ## s := by
@@ -760,21 +755,6 @@ theorem toCanonical_union :
   ext x
   simp only [mem_toCanonical, mem_union]
 
--- /-- The list representation of the empty set is the empty list. -/
--- @[simp]
--- theorem toList_empty : toList (∅ : S) = [] := by
---   have h : ∀ x, x ∉ toList (∅ : S) := by
---     intro x hx
---     rw [mem_toList] at hx
---     exact mem_empty hx
---   cases hl : toList (∅ : S) with
---   | nil => rfl
---   | cons x xs =>
---     exfalso
---     apply h x
---     rw [hl]
---     exact List.mem_cons_self _ _
-
 /-- Converting a set to canonical form and back yields the original set.
     Corresponds to Rocq's `list_to_set_to_list`. -/
 theorem ofList_toList {m : S} :
@@ -805,20 +785,6 @@ theorem ofList_toList {m : S} :
       rintro (hin | hin)
       · left; exact hin
       · right; apply IH hin
-
--- The following theorems need to be rewritten to work with Finsets instead of Lists
--- They reference a `toList` function that doesn't exist in the current formulation
-
--- /-- List representation of insert is permutation-equivalent to cons (when element not present).
---     Corresponds to Rocq's `elements_union_singleton`. -/
--- theorem toList_insert {x : A} {s : S} : x ∉ s → List.Perm (toList (insert x s)) (x :: toList s)  := by
---   sorry
-
--- /-- Converting a duplicate-free list and back yields a permutation of the original.
---     Corresponds to Rocq's `set_to_list_to_set`. -/
--- theorem toList_ofList {l : List A} (Hl : l.Nodup) :
---   List.Perm (toList (ofList l : S)) l := by
---   sorry
 
 /-- Membership in mapped set. Corresponds to Rocq's `elem_of_map`. -/
 theorem mem_map {S' : Type _} {B : Type _} [DecidableEq B] [LawfulFiniteSet S' B] (f : A → B) (s : S) (x : B) :
@@ -934,12 +900,6 @@ theorem set_choose (X : S) (h : size X ≠ 0) : ∃ x, x ∈ X := by
     rw [<-mem_toCanonical, hlist]
     rw [mem_union]; left
     rw [mem_singleton]
-
--- /-- toList of union when disjoint (up to permutation). -/
--- theorem toList_union (X Y : S) (h : X ## Y) :
---     ∃ l', (toList (X ∪ Y)).Perm (toList X ++ l') ∧
---           (toList Y).Perm l' := by
---   sorry
 
 /-- Corresponds to Rocq's `size_union`. -/
 theorem size_union {X Y : S} (h : X ## Y) : size X + size Y = size (X ∪ Y) := by
@@ -1066,6 +1026,94 @@ theorem set_ind {P : S → Prop}
       · assumption
     rw [heq]
     exact this
+
+/-- Fold over a finite set with a left-commutative operation.
+    The operation must be left-commutative to ensure the result is independent
+    of the order of elements. -/
+def fold {β : Type _} (f : β → A → β) (hcomm : FromMathlib.LeftCommutative f)
+    (init : β) (s : S) : β :=
+  FromMathlib.Finset.fold f hcomm init (toCanonical s)
+
+@[simp]
+theorem fold_empty {β : Type _} {f : β → A → β} {hcomm : FromMathlib.LeftCommutative f} {init : β} :
+    fold f hcomm init (∅ : S) = init := by
+  simp only [fold, toCanonical_empty, FromMathlib.Finset.fold_empty]
+
+@[simp]
+theorem fold_singleton {β : Type _} {f : β → A → β} {hcomm : FromMathlib.LeftCommutative f} {init : β} {a : A} :
+    fold f hcomm init ({a} : S) = f init a := by
+  simp only [fold, toCanonical_singleton, FromMathlib.Finset.fold_singleton]
+
+@[simp]
+theorem fold_insert {β : Type _} {f : β → A → β} {hcomm : FromMathlib.LeftCommutative f} {init : β}
+    {a : A} {s : S} (h : a ∉ s) :
+    fold f hcomm init (insert a s) = f (fold f hcomm init s) a := by
+  simp only [fold, insert_union, toCanonical_union, toCanonical_singleton]
+  rw [FromMathlib.Finset.fold_insert]
+  intro ha
+  rw [mem_toCanonical] at ha
+  exact h ha
+
+@[simp]
+theorem fold_union {β : Type _} {f : β → A → β} {hcomm : FromMathlib.LeftCommutative f} {init : β}
+    {s t : S} (hdisj : s ## t) :
+    fold f hcomm init (s ∪ t) = fold f hcomm (fold f hcomm init s) t := by
+  induction t using set_ind with
+  | hemp =>
+    simp
+  | hadd x X hnotin IH =>
+    have hnotin_s : x ∉ s := by
+      have hempty : s ∩ (insert x X) = ∅ := disjoint_intersection.mp hdisj
+      intro hx
+      have : x ∈ s ∩ (insert x X) := by
+        rw [mem_inter]; constructor
+        · exact hx
+        · rw [insert_union, mem_union, mem_singleton]; left; rfl
+      rw [hempty] at this
+      apply (mem_empty this)
+    have hdisj' : s ## X := by
+      rw [disjoint_intersection]
+      have hempty : s ∩ (insert x X) = ∅ := disjoint_intersection.mp hdisj
+      ext y
+      rw [mem_inter]
+      constructor
+      · intro ⟨hs, hX⟩
+        have : y ∈ s ∩ (insert x X) := by
+          rw [mem_inter]; constructor
+          · exact hs
+          · rw [insert_union, mem_union]; right; exact hX
+        rw [hempty] at this
+        exact this
+      · intro h; exfalso; apply (mem_empty h)
+    have hnotin_union : x ∉ s ∪ X := by
+      rw [mem_union]
+      intro h
+      cases h with
+      | inl hs => exact hnotin_s hs
+      | inr hX => exact hnotin hX
+    calc fold f hcomm init (s ∪ insert x X)
+        = fold f hcomm init (insert x X ∪ s) := by rw [union_comm]
+      _ = fold f hcomm init (insert x (X ∪ s)) := by rw [insert_union_comm]
+      _ = fold f hcomm init (insert x (s ∪ X)) := by rw [union_comm]
+      _ = f (fold f hcomm init (s ∪ X)) x := by rw [fold_insert hnotin_union]
+      _ = f (fold f hcomm (fold f hcomm init s) X) x := by rw [IH hdisj']
+      _ = fold f hcomm (fold f hcomm init s) (insert x X) := by symm; exact fold_insert hnotin
+
+instance {x : A} {s : S} : Decidable (x ∈ s) := by
+  rw [<-mem_toCanonical]
+  infer_instance
+
+theorem toCanonical_classify {s₁ s₂ : S} : (toCanonical s₁ = toCanonical s₂) = (s₁ = s₂) := by
+  ext; apply Iff.intro
+  · intro heq
+    ext x; rw [<-mem_toCanonical, <-mem_toCanonical, heq]
+  · rintro ⟨⟩
+    rfl
+
+instance : DecidableEq S := by
+  intro X Y
+  rw [<-toCanonical_classify]
+  infer_instance
 
 end FinLemmas
 

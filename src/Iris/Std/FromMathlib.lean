@@ -173,6 +173,16 @@ theorem List.foldl_perm_of_leftComm {f : β → α → β} (hcomm : LeftCommutat
     rw [hcomm]
   | trans _ _ ih₁ ih₂ => exact Eq.trans (ih₁ init) (ih₂ init)
 
+theorem List.foldl_comm_left {f : β → α → β} (hcomm : LeftCommutative f)
+  (init : β) (a : α) (l : List α) :
+    List.foldl f (f init a) l = f (List.foldl f init l) a := by
+  induction l generalizing init with
+  | nil => simp
+  | cons x xs IH =>
+    simp only [List.foldl_cons]
+    have comm : f (f init a) x = f (f init x) a := hcomm init a x
+    rw [comm, IH]
+
 namespace Multiset
 
 variable {α : Type _}
@@ -242,6 +252,12 @@ protected theorem ind {p : Multiset α → Prop} (h : ∀ l : List α, p (ofList
     p s :=
   Quotient.ind h s
 
+protected def recursor {p : Multiset α → Type _} (h : ∀ l : List α, p (Quotient.mk _ l))
+  (H : ∀ (a b : List α) (p : a ≈ b), Quotient.sound p ▸ h a = h b)
+  (s : Multiset α) :
+    p s :=
+  Quotient.rec h H s
+
 @[elab_as_elim]
 protected theorem ind₂ {p : Multiset α → Multiset β → Prop}
     (h : ∀ (l₁ : List α) (l₂ : List β), p (ofList l₁) (ofList l₂))
@@ -262,7 +278,6 @@ protected def lift₂ {β γ : Type _} (f : List α → List β → γ)
     Multiset α → Multiset β → γ :=
   Quotient.lift₂ f h
 
-@[simp]
 theorem size_empty : S = ∅ ↔ size (S : Multiset α) = 0 := by
   induction S using Multiset.ind with | h a =>
   simp only [card_coe, List.length_eq_zero_iff, EmptyCollection.emptyCollection]
@@ -371,7 +386,6 @@ def Mem (a : α) (s : Finset α) : Prop :=
 local instance inst_mem : Membership α (Finset α) where
   mem s a := Mem a s
 
-@[simp]
 theorem mem_def {a : α} {s : Finset α} : a ∈ s ↔ a ∈ s.val := by
   rfl
 
@@ -396,7 +410,6 @@ theorem ext {s t : Finset α} (h : ∀ a, a ∈ s ↔ a ∈ t) : s = t := by
     NB. Copied from Mathlib/Data/Finset/Card.lean -/
 def card (s : Finset α) : Nat := Multiset.size s.val
 
-@[simp]
 theorem card_empty : S = ∅ ↔ card (S : Finset α) = 0 := by
   simp only [card]
   rw [<-Multiset.size_empty]
@@ -409,7 +422,7 @@ theorem card_empty : S = ∅ ↔ card (S : Finset α) = 0 := by
     cases val using Multiset.ind with | h l =>
     cases l with
     | nil => rfl
-    | cons hd tl => simp [List.length] at h
+    | cons hd tl => simp [List.length, Multiset.size_empty] at h
 
 /-- Create a finset from a list with no duplicates -/
 def ofList (l : List α) (nd : l.Nodup) : Finset α :=
@@ -432,7 +445,6 @@ def singleton (a : α) : Finset α :=
 local instance inst_singleton : Singleton α (Finset α) where
   singleton := singleton
 
-@[simp]
 theorem mem_singleton {a b : α} :
     a ∈ ({b} : Finset α) ↔ a = b := by
   show a ∈ (Multiset.ofList [b]) ↔ a = b
@@ -466,6 +478,12 @@ protected theorem ind₂ {p : Finset α → Finset β → Prop}
   induction val₁, val₂ using Multiset.ind₂ with | h l₁ l₂ =>
   exact h l₁ nodup₁ l₂ nodup₂
 
+private theorem ofList_perm {l₁ l₂ : List α} (perm : l₁.Perm l₂) (nd₁ : l₁.Nodup) (nd₂ : l₂.Nodup) :
+    ofList l₁ nd₁ = ofList l₂ nd₂ := by
+  ext a
+  simp only [mem_ofList]
+  exact List.Perm.mem_iff perm
+
 /-! ### Basic operations -/
 
 /-- Insert an element into a finset. If the element is already present, the set is unchanged. -/
@@ -490,7 +508,6 @@ def insert [DecidableEq α] (a : α) (s : Finset α) : Finset α :=
 local instance inst_insert [DecidableEq α] : Insert α (Finset α) where
   insert := insert
 
-@[simp]
 theorem mem_insert [DecidableEq α] {a b : α} {s : Finset α} :
     a ∈ insert b s ↔ a = b ∨ a ∈ s := by
   induction s using Finset.ind with | h l nd =>
@@ -607,7 +624,6 @@ def inter [DecidableEq α] (s t : Finset α) : Finset α :=
 local instance inst_inter [DecidableEq α] : Inter (Finset α) where
   inter := inter
 
-@[simp]
 theorem mem_inter [DecidableEq α] {a : α} {s t : Finset α} :
     a ∈ s ∩ t ↔ a ∈ s ∧ a ∈ t := by
   induction s using Finset.ind with | h l₁ nd₁ =>
@@ -641,7 +657,6 @@ def sdiff [DecidableEq α] (s t : Finset α) : Finset α :=
 local instance inst_sdiff [DecidableEq α] : SDiff (Finset α) where
   sdiff := sdiff
 
-@[simp]
 theorem mem_sdiff [DecidableEq α] {a : α} {s t : Finset α} :
     a ∈ s \ t ↔ a ∈ s ∧ a ∉ t := by
   induction s using Finset.ind with | h l₁ nd₁ =>
@@ -691,6 +706,41 @@ theorem fold_empty {f : β → α → β} {hcomm : LeftCommutative f} {init : β
 theorem fold_singleton {f : β → α → β} {hcomm : LeftCommutative f} {init : β} {a : α} :
     fold f hcomm init {a} = f init a := by
   rfl
+
+@[simp]
+theorem fold_insert [DecidableEq α] {f : β → α → β} {hcomm : LeftCommutative f} {init : β}
+  {a : α} {s : Finset α} (h : a ∉ s) :
+  fold f hcomm init ({a} ∪ s) = f (fold f hcomm init s) a := by
+  induction s using Finset.ind with | h l nd =>
+  simp only [fold, union, inst_union]
+  simp only [Multiset.lift₂, Quotient.lift₂, ofList, Multiset.ofList]
+  show Multiset.fold f hcomm init (Quot.mk _ (List.filter (fun x => decide (x ∉ l)) [a] ++ l)) =
+       f (Multiset.fold f hcomm init (Quot.mk _ l)) a
+  simp only [mem_ofList] at h
+  have filter_eq : List.filter (fun x => decide (x ∉ l)) [a] = [a] := by
+    simp only [List.filter]
+    simp [h]
+  rw [filter_eq]
+  show Multiset.fold f hcomm init (Multiset.ofList ([a] ++ l)) =
+       f (Multiset.fold f hcomm init (Multiset.ofList l)) a
+  simp only [Multiset.fold_ofList, List.foldl_append, List.foldl_cons, List.foldl_nil]
+  exact List.foldl_comm_left hcomm init a l
+
+@[simp]
+theorem fold_insert_idemp [DecidableEq α] {f : β → α → β} {hcomm : LeftCommutative f} {init : β}
+  {a : α} {s : Finset α} (h : a ∈ s) :
+  fold f hcomm init ({a} ∪ s) = fold f hcomm init s := by
+  induction s using Finset.ind with | h l nd =>
+  simp only [fold, union, inst_union, singleton, inst_singleton]
+  simp only [Multiset.lift₂, Quotient.lift₂, ofList, Multiset.ofList]
+  simp only [mem_ofList] at h
+  show Multiset.fold f hcomm init (Quot.mk _ (List.filter (fun x => decide (x ∉ l)) [a] ++ l)) =
+       Multiset.fold f hcomm init (Quot.mk _ l)
+  have filter_eq : List.filter (fun x => decide (x ∉ l)) [a] = [] := by
+    simp only [List.filter]
+    simp [h]
+  rw [filter_eq]
+  simp only [List.nil_append]
 
 /-- Basic computation lemma: fold on ofList reduces to list foldl -/
 theorem fold_ofList (f : β → α → β) (hcomm : LeftCommutative f)
@@ -870,6 +920,34 @@ theorem flatMap_union {β : Type _} [DecidableEq α] [DecidableEq β]
     cases h with
     | inl h => obtain ⟨a, ha, hb⟩ := h; exact ⟨a, mem_union.mpr (Or.inl ha), hb⟩
     | inr h => obtain ⟨a, ha, hb⟩ := h; exact ⟨a, mem_union.mpr (Or.inr ha), hb⟩
+
+private def mem_dec [DecidableEq A] (x : A) (s : Finset A) : Bool
+  := fold (fun acc y => decide (x = y) ∨ acc) (by intro P a b; simp only; grind only) false s
+
+private theorem mem_dec_mem [DecidableEq A] {x : A} {X : Finset A}
+  : mem_dec x X = (x ∈ X) := by
+  induction X using Finset.cases_on with
+  | h_empty => simp [mem_dec]
+  | h_add y X hnin IH =>
+    simp [mem_dec]
+    rw [mem_singleton, fold_insert hnin]
+    simp [mem_dec] at IH
+    simp [IH]
+
+instance [DecidableEq A] {x : A} {s : Finset A} : Decidable (x ∈ s) := by
+  rw [<-mem_dec_mem]
+  infer_instance
+
+instance [DecidableEq A] : DecidableEq (Finset A) := by
+  intro X Y
+  cases X with | mk val _ =>
+  cases Y with | mk val' _ =>
+  simp
+  unfold Multiset at *
+  have : (a b : List A) → Decidable (a ≈ b) := by
+    intro a b; simp only [HasEquiv.Equiv, List.isSetoid]
+    infer_instance
+  apply Quotient.decidableEq (s := List.isSetoid A) val val'
 
 end Finset
 
