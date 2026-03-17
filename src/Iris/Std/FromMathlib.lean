@@ -444,18 +444,6 @@ protected theorem ind₂ {p : Finset α → Finset β → Prop}
   induction val₁, val₂ using Multiset.ind₂ with | h l₁ l₂ =>
   exact h l₁ nodup₁ l₂ nodup₂
 
-/-- Case analysis on a finset: either it's empty or it has at least one element. -/
-@[elab_as_elim]
-protected theorem cases_on {p : Finset α → Prop} (s : Finset α)
-    (h_empty : p ∅)
-    (h_cons : ∀ (a : α) (l : List α) (nd : (a :: l).Nodup), p (ofList (a :: l) nd)) :
-    p s := by
-  induction s using Finset.ind with | h l nd =>
-  cases l with
-  | nil => exact h_empty
-  | cons hd tl =>
-    exact h_cons hd tl nd
-
 /-! ### Basic operations -/
 
 /-- Insert an element into a finset. If the element is already present, the set is unchanged. -/
@@ -613,6 +601,28 @@ theorem mem_sdiff [DecidableEq α] {a : α} {s t : Finset α} :
   induction t using Finset.ind with | h l₂ nd₂ =>
   show a ∈ (l₁.filter (· ∉ l₂) : Multiset α) ↔ a ∈ (l₁ : Multiset α) ∧ a ∉ (l₂ : Multiset α)
   simp only [Multiset.mem_coe, List.mem_filter, decide_eq_true_eq]
+
+/-- Case analysis on a finset: either it's empty or it has at least one element. -/
+@[elab_as_elim]
+protected theorem cases_on [DecidableEq α] {p : Finset α → Prop} (s : Finset α)
+    (h_empty : p ∅)
+    (h_add : ∀ x X, x ∉ X → p X → p ({x} ∪ X)) :
+    p s := by
+  induction s using Finset.ind with | h l nd =>
+  induction l with
+  | nil => exact h_empty
+  | cons hd tl ih =>
+    have nd_tl : tl.Nodup := (List.nodup_cons.mp nd).right
+    have hd_notin : hd ∉ tl := (List.nodup_cons.mp nd).left
+    have p_tl : p (ofList tl nd_tl) := ih nd_tl
+    have hd_notin_finset : hd ∉ (ofList tl nd_tl) := by
+      simp; exact hd_notin
+    have step := h_add hd (ofList tl nd_tl) hd_notin_finset p_tl
+    have eq : ofList (hd :: tl) nd = {hd} ∪ ofList tl nd_tl := by
+      ext a
+      simp only [mem_union, mem_singleton, mem_ofList, List.mem_cons]
+    rw [eq]
+    exact step
 
 /-- Fold over a finite set with a left-commutative operation.
     The operation must be left-commutative to ensure the result is independent

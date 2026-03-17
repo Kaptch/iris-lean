@@ -94,7 +94,7 @@ instance : Disjoint S where
 
 /-- Finite set interface extending the abstract set interface with conversion to lists.
     Every finite set can be converted to a list of its elements. -/
-class FiniteSet (S : Type _) (A : outParam (Type _)) extends Set S A where
+class FiniteSet (S : Type _) (A : outParam (Type _)) extends LawfulSet S A where
   toCanonical : S → Finset A
 export FiniteSet (toCanonical)
 
@@ -103,7 +103,7 @@ export FiniteSet (toCanonical)
     membership in the list corresponds exactly to membership in the set. -/
 class LawfulFiniteSet (S : Type _) (A : outParam (Type _)) [DecidableEq A] extends LawfulSet S A, FiniteSet S A where
   /-- Membership in the list corresponds to membership in the set. -/
-  mem_toList {k : A} : k ∈ toCanonical m ↔ k ∈ m
+  mem_toCanonical {k : A} : k ∈ toCanonical m ↔ k ∈ m
 
 end Set
 
@@ -549,18 +549,22 @@ private theorem ofMultisetExtend_cons_comm {s : S} {x : A} {xs : List A} :
 /-- Converting empty list to set yields empty set. -/
 @[simp]
 theorem ofMultiset_nil : ofMultiset ∅ = (∅ : S) := by
-  simp [ofMultiset, ofMultisetExtend_nil]
+  simp [ofMultiset]; exact ofMultisetExtend_nil
 
 /-- Converting a cons to a set yields insertion into converted tail. -/
 @[simp]
 theorem ofList_cons : ofList (x :: xs) = insert x ((ofList xs) : S) := by
-  simp [ofList, ofListExtend_cons_comm]
+  simp [ofList, ofMultiset]; exact ofMultisetExtend_cons_comm
 
 /-- Membership in list corresponds to membership in converted set.
     Corresponds to Rocq's `elem_of_list_to_set`. -/
 theorem mem_ofList {x : A} {xs : List A} : x ∈ xs ↔ x ∈ (ofList xs : S) := by
   induction xs with
-  | nil => simp [ofList_nil, mem_empty]
+  | nil =>
+    simp only [ofList, List.not_mem_nil]
+    have : ofMultiset (Multiset.ofList []) = (∅ : S) := ofMultiset_nil
+    rw [this]
+    exact Iff.intro (fun h => h.elim) (fun h => mem_empty h)
   | cons y ys IH =>
     simp only [List.mem_cons, ofList_cons, mem_insert]
     grind only
@@ -691,56 +695,65 @@ end GenLemmas
 open FromMathlib in
 /-- Map operation on sets. Maps a function over all elements.
     Corresponds to Rocq's `set_map`. -/
-def map {S S' : Type _} {A B : Type _} [FiniteSet S A] [FiniteSet S' B]
+def map {S S' : Type _} {A B : Type _} [DecidableEq A] [DecidableEq B]
+  [FiniteSet S A] [FiniteSet S' B]
   (f : A → B) (s : S) : S' :=
-  ofList ((toCanonical (S := S) (A := A) s : FromMathlib.Finset A).map f)
+  ofCanonicalFinset (S := S') (A := B) ((toCanonical s).map f)
 
-/-- Bind operation on sets. Flatmap a function over all elements.
-    Corresponds to Rocq's `set_bind`. -/
-def bind {S S' : Type _} {A B : Type _} [FiniteSet S A] [FiniteSet S' B]
-  (f : A → S') (s : S) : S' :=
-  ofList ((toList s).flatMap (fun x => toList (f x)))
+-- /-- Bind operation on sets. Flatmap a function over all elements.
+--     Corresponds to Rocq's `set_bind`. -/
+-- def bind {S S' : Type _} {A B : Type _} [DecidableEq A] [DecidableEq B] [FiniteSet S A] [FiniteSet S' B]
+--   (f : A → S') (s : S) : S' :=
+--   ofList ((toList s).flatMap (fun x => toList (f x)))
 
 /-- The cardinality (size) of a finite set, defined as the length of its list representation.
     Corresponds to Rocq's `size`. -/
 def size {S : Type _} {A : Type _} [FiniteSet S A] (s : S) : Nat :=
-  (toList (S := S) (A := A) s : List A).length
+  (toCanonical s).card
 
 section FinLemmas
-variable {S : Type _} {A : Type _} [LawfulFiniteSet S A]
+variable {S : Type _} {A : Type _} [DecidableEq A] [inst : LawfulFiniteSet S A]
 
-/-- The list representation of a set has no duplicates. -/
-theorem toList_noDup {s : S} : (toList s).Nodup := by
-  simp only [toList]
-  apply LawfulFiniteSet.toList_noDup
+-- /-- The list representation of a set has no duplicates. -/
+-- theorem toList_noDup {s : S} : (toCanonical s).Nodup := by
+--   simp only [toList]
+--   split
+--   next val nodup =>
+--   split
+--   next l => exact nodup
 
 /-- Membership in `toList` corresponds to membership in the set. -/
-theorem mem_toList {k : A} {m : S} : k ∈ toList m ↔ k ∈ m := by
-  simp only [toList]
-  apply LawfulFiniteSet.mem_toList
+theorem mem_toList {k : A} {m : S} : k ∈ toCanonical m ↔ k ∈ m := by
+  simp only [toCanonical]
+  exact LawfulFiniteSet.mem_toCanonical
 
-/-- The list representation of the empty set is the empty list. -/
-@[simp]
-theorem toList_empty : toList (∅ : S) = [] := by
-  ext i a; simp
-  intro H
-  apply mem_empty (x := a) (S := S)
-  apply (mem_toList (m := (∅ : S)) (k := a)).mp
-  rw [List.mem_iff_getElem?]
-  exists i
+-- /-- The list representation of the empty set is the empty list. -/
+-- @[simp]
+-- theorem toList_empty : toList (∅ : S) = [] := by
+--   have h : ∀ x, x ∉ toList (∅ : S) := by
+--     intro x hx
+--     rw [mem_toList] at hx
+--     exact mem_empty hx
+--   cases hl : toList (∅ : S) with
+--   | nil => rfl
+--   | cons x xs =>
+--     exfalso
+--     apply h x
+--     rw [hl]
+--     exact List.mem_cons_self _ _
 
 /-- Converting a set to a list and back yields the original set.
     Corresponds to Rocq's `list_to_set_to_list`. -/
 theorem ofList_toList {m : S} :
-  (ofList (toList m)) = m := by
+  (ofCanonicalFinset (toCanonical m)) = m := by
   ext k
   by_cases h : k ∈ m
   · simp [h]
     rw [<-mem_toList] at h
     revert h
-    induction (toList m) with
-    | nil => simp
-    | cons x xs IH =>
+    induction (toCanonical m) using FromMathlib.Finset.cases_on with
+    | h_empty => simp
+    | h_add x X hnin IH =>
       simp  [ofList_cons, mem_insert_eq]
       intro H
       cases H with
@@ -786,7 +799,7 @@ theorem toList_ofList {l : List A} (Hl : l.Nodup) :
   List.Perm (toList (ofList l : S)) l := by
   induction l with
   | nil =>
-    rw [ofList_nil, toList_empty]
+    rw [ofList, ofMultiset, ofMultiset_nil, toList_empty]
   | cons x xs IH =>
     rw [ofList_cons]
     rw [List.perm_ext_iff_of_nodup]
@@ -871,40 +884,40 @@ theorem ofList_congr {l l' : List A} :
   rw [<-mem_ofList, <-mem_ofList]
   induction H <;> grind only [List.mem_cons]
 
-/-- Membership in bind. Corresponds to Rocq's `elem_of_set_bind`. -/
-theorem mem_bind {S' : Type _} {B : Type _} [LawfulFiniteSet S' B]
-    (f : A → S') (X : S) (y : B) :
-    y ∈ bind (S' := S') f X ↔ ∃ x, x ∈ X ∧ y ∈ (f x) := by
-  simp only [bind]
-  rw [<-mem_ofList, List.mem_flatMap]
-  apply Iff.intro
-  · intro ⟨x, hx_in, hy_in⟩
-    grind only [mem_toList]
-  · intro ⟨x, hx, hy⟩
-    grind only [mem_toList]
+-- /-- Membership in bind. Corresponds to Rocq's `elem_of_set_bind`. -/
+-- theorem mem_bind {S' : Type _} {B : Type _} [LawfulFiniteSet S' B]
+--     (f : A → S') (X : S) (y : B) :
+--     y ∈ bind (S' := S') f X ↔ ∃ x, x ∈ X ∧ y ∈ (f x) := by
+--   simp only [bind]
+--   rw [<-mem_ofList, List.mem_flatMap]
+--   apply Iff.intro
+--   · intro ⟨x, hx_in, hy_in⟩
+--     grind only [mem_toList]
+--   · intro ⟨x, hx, hy⟩
+--     grind only [mem_toList]
 
-/-- Bind over empty set is empty. Corresponds to Rocq's `bind_empty`. -/
-@[simp]
-theorem bind_empty [LawfulFiniteSet S' B]
-    (f : A → S') :
-  bind (S' := S') f (∅ : S) = ∅ := by
-  ext y; rw [mem_bind]; simp [mem_empty]
+-- /-- Bind over empty set is empty. Corresponds to Rocq's `bind_empty`. -/
+-- @[simp]
+-- theorem bind_empty [LawfulFiniteSet S' B]
+--     (f : A → S') :
+--   bind (S' := S') f (∅ : S) = ∅ := by
+--   ext y; rw [mem_bind]; simp [mem_empty]
 
-/-- Bind over singleton. Corresponds to Rocq's `bind_singleton`. -/
-@[simp]
-theorem bind_singleton [LawfulFiniteSet S' B]
-    (f : A → S') (x : A) :
-  bind (S' := S') f ({x} : S) = f x := by
-  ext y; rw [mem_bind]; apply Iff.intro
-  · intro ⟨z, hz, hy⟩; rw [mem_singleton] at hz; subst hz; exact hy
-  · intro hy; exists x; apply And.intro; rw [mem_singleton]; exact hy
+-- /-- Bind over singleton. Corresponds to Rocq's `bind_singleton`. -/
+-- @[simp]
+-- theorem bind_singleton [LawfulFiniteSet S' B]
+--     (f : A → S') (x : A) :
+--   bind (S' := S') f ({x} : S) = f x := by
+--   ext y; rw [mem_bind]; apply Iff.intro
+--   · intro ⟨z, hz, hy⟩; rw [mem_singleton] at hz; subst hz; exact hy
+--   · intro hy; exists x; apply And.intro; rw [mem_singleton]; exact hy
 
-/-- Bind distributes over union. Corresponds to Rocq's `bind_union`. -/
-theorem bind_union [LawfulFiniteSet S' B]
-    (f : A → S') (s₁ s₂ : S) :
-  bind (S' := S') f (s₁ ∪ s₂) = bind f s₁ ∪ bind f s₂ := by
-  ext y; rw [mem_bind, mem_union, mem_bind, mem_bind]
-  apply Iff.intro <;> grind only [mem_union]
+-- /-- Bind distributes over union. Corresponds to Rocq's `bind_union`. -/
+-- theorem bind_union [LawfulFiniteSet S' B]
+--     (f : A → S') (s₁ s₂ : S) :
+--   bind (S' := S') f (s₁ ∪ s₂) = bind f s₁ ∪ bind f s₂ := by
+--   ext y; rw [mem_bind, mem_union, mem_bind, mem_bind]
+--   apply Iff.intro <;> grind only [mem_union]
 
 /-- A set has size 0 iff it is empty. Corresponds to Rocq's `size_empty_iff`. -/
 theorem size_empty {X : S} : size X = 0 ↔ X = ∅ := by
