@@ -287,6 +287,9 @@ def full : CoPset := ⟨CoPsetRaw.leaf true, rfl⟩
 
 def singleton (p : Pos) : CoPset := ⟨CoPsetRaw.Singleton p, coPsetSingleton_wf p⟩
 
+instance : Singleton Pos CoPset where
+  singleton := CoPset.singleton
+
 def union (X Y : CoPset) : CoPset := ⟨CoPsetRaw.Union X.tree Y.tree, coPsetUnion_wf _ _ X.wf Y.wf⟩
 
 instance : Union CoPset where union := CoPset.union
@@ -308,7 +311,47 @@ instance : HasSubset CoPset where
 instance : SDiff CoPset where
   sdiff := CoPset.diff
 
-theorem in_inter p (X Y : CoPset) : p ∈ X ∩ Y <-> p ∈ X ∧ p ∈ Y := by
+theorem mem_empty {p : Pos} : p ∉ (∅ : CoPset) := by
+  simp only [Membership.mem, EmptyCollection.emptyCollection, CoPset.empty]
+  cases p <;> simp [CoPsetRaw.ElemOf]
+
+theorem in_singleton {p q : Pos} : p ∈ ({q} : CoPset) ↔ p = q := by
+  constructor
+  · intro h
+    simp only [Singleton.singleton, CoPset.singleton, Membership.mem] at h
+    induction q generalizing p with
+    | xH =>
+      cases p <;> simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf] at h <;> rfl
+    | xO q' IH =>
+      cases p with
+      | xH => simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+      | xO p' =>
+        simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+        have := IH h
+        rw [this]
+      | xI p' => simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+    | xI q' IH =>
+      cases p with
+      | xH => simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+      | xO p' => simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+      | xI p' =>
+        simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node] at h
+        have := IH h
+        rw [this]
+  · intro h
+    simp only [Singleton.singleton, CoPset.singleton, Membership.mem]
+    subst h
+    induction p with
+    | xH => simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf]
+    | xO p' IH =>
+      simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node]
+      exact IH
+    | xI p' IH =>
+      simp [CoPsetRaw.Singleton, CoPsetRaw.ElemOf, elem_of_node]
+      exact IH
+
+
+theorem in_inter {p : Pos} {X Y : CoPset} : p ∈ X ∩ Y <-> p ∈ X ∧ p ∈ Y := by
   simp only [Inter.inter, inter, Membership.mem]
   constructor
   · rcases X with ⟨X, xwf⟩; rcases Y with ⟨Y, ywf⟩; dsimp
@@ -360,7 +403,7 @@ theorem in_complement {X : CoPset} : p ∈ complement X <-> p ∉ X := by
 
 theorem in_diff {p} {X Y : CoPset} : p ∈ X \ Y <-> p ∈ X ∧ p ∉ Y := by
   refine ⟨fun Hnin => ?_, fun ⟨Hx, Hy⟩ => ?_⟩
-  · obtain ⟨Hx, Hy⟩ := in_inter p X (complement Y) |>.mp Hnin
+  · obtain ⟨Hx, Hy⟩ := in_inter |>.mp Hnin
     exact ⟨Hx, in_complement.mp Hy⟩
   · simpa only [SDiff.sdiff, CoPset.diff, in_inter] using ⟨Hx, in_complement.mpr Hy⟩
 

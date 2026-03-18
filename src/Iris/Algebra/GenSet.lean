@@ -166,7 +166,7 @@ instance : UCMRA (SetDisjO S) where
   unit_left_id := unit_left_id
   pcore_unit := pcore_unit
 
-theorem copset_disj_included (X Y : S) :
+theorem set_disj_included (X Y : S) :
    set_valid X ≼ set_valid Y ↔ X ⊆ Y := by
   simp only [CMRA.Included]
   apply Iff.intro
@@ -197,17 +197,17 @@ theorem copset_disj_included (X Y : S) :
       · apply Hsub _ G
       · apply G.left
 
-theorem copset_disj_union (X Y : S) (Hdisj : X ## Y) :
+theorem set_disj_union (X Y : S) (Hdisj : X ## Y) :
   (set_valid X) • (set_valid Y) ≡ set_valid (X ∪ Y) := by
   simp [CMRA.op, op]
   exact Hdisj
 
-theorem copset_disj_valid_op (X Y : S) :
+theorem set_disj_valid_op (X Y : S) :
     ✓ ((set_valid X) • (set_valid Y)) ↔ X ## Y := by
   simp [CMRA.op, op, CMRA.Valid, valid]
   by_cases H : X ## Y <;> simp [H]
 
-theorem copset_disj_valid_inv_l (X : S) (Y : SetDisjO S) :
+theorem set_disj_valid_inv_l (X : S) (Y : SetDisjO S) :
     ✓ ((set_valid X) • Y) → ∃ Y', Y = set_valid Y' ∧ X ## Y' := by
   simp [CMRA.op, op, CMRA.Valid, valid]
   rcases Y with ⟨Y | _⟩ <;> simp <;> by_cases H : X ## Y <;> simp [H]
