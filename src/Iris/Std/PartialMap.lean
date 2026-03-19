@@ -1,11 +1,13 @@
-import Batteries.Data.List.Perm
-import Iris.Std.FromMathlib
-
 /-
 Copyright (c) 2026 Zongyuan Liu, Markus de Medeiros. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Zongyuan Liu, Markus de Medeiros
 -/
+module
+
+import Batteries.Data.List.Perm
+import Iris.Std.FromMathlib
+
 
 /-! ## Partial Maps
 
@@ -28,6 +30,9 @@ be unique, ie. all constructions reason extensionally about the get? function ra
 than intensionally about map equalities. PartialMaps are free to be non-uniquely
 represented.
 -/
+
+@[expose] public section
+
 namespace Iris.Std
 
 /-- Base typeclass for partial maps: maps from keys `K` to optional values `V`. -/
@@ -823,6 +828,24 @@ theorem ofList_toList [DecidableEq K] {m : M V} :
     cases h ▸ toList_get.mp Hk
   · exact get?_ofList_some (toList_get.mpr h) toList_noDupKeys
 
+theorem induction_on [DecidableEq K] {P : M V → Prop}
+    (hequiv : ∀ m₁ m₂, PartialMap.equiv m₁ m₂ → P m₁ → P m₂)
+    (hemp : P PartialMap.empty)
+    (hins : ∀ i x m, get? m i = none → P m → P (PartialMap.insert m i x))
+    (m : M V) : P m := by
+  apply hequiv _ _ ofList_toList
+  suffices ∀ l, NoDupKeys l → P (ofList l) from this _ toList_noDupKeys
+  intro l hnd
+  induction l with
+  | nil => simpa [ofList] using hemp
+  | cons kv rest ih =>
+    rw [ofList_cons]
+    apply hins kv.1 kv.2
+    · refine get?_ofList_none (M := M) ?_ (noDupKeys_cons hnd)
+      intro ⟨v, hv⟩
+      exact (List.nodup_cons.mp hnd).1 (List.mem_map_of_mem (f := Prod.fst) (a := (kv.1, v)) hv)
+    · exact ih (noDupKeys_cons hnd)
+
 theorem mem_of_mem_ofList [DecidableEq K] {l : List (K × V)} {i : K} {x : V}
     (H : get? (ofList l : M V) i = some x) : (i, x) ∈ l := by
   induction l
@@ -1042,6 +1065,5 @@ theorem toList_zip {m₁ : M V} {m₂ : M V'} :
     simp [Hb₁]
 
 end LawfulFiniteMap
-
 
 end Iris.Std

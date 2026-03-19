@@ -3,6 +3,8 @@ Copyright (c) 2026 Sergei Stepanenko. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
 import Iris.Std.GenSets
 import Std.Data.ExtTreeSet
 import Iris.Std.CoPset
@@ -60,21 +62,5 @@ instance [Std.LawfulEqCmp cmp] : LawfulFiniteSet (Std.ExtTreeSet α cmp) α wher
     apply e
 
 end ExtTreeSet
-
-/-! ### CoPset Instance -/
-
-namespace CoPset
-
-instance : Set CoPset Pos where
-
-instance : LawfulSet CoPset Pos where
-  ext _ _ h := CoPset.ext h
-  mem_empty := CoPset.mem_empty
-  mem_singleton := CoPset.in_singleton
-  mem_union := CoPset.in_union
-  mem_inter := CoPset.in_inter
-  mem_diff := CoPset.in_diff
-
-end CoPset
 
 end Iris.Std

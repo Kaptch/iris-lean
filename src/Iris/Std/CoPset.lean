@@ -3,9 +3,12 @@ Copyright (c) 2026 Remy Seassau. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Remy Seassau, Markus de Medeiros, Sergei Stepanenko
 -/
+module
 
-import Iris.Std.Positives
-import Iris.Std.Classes
+public import Iris.Std.Positives
+public import Iris.Std.GenSets
+
+@[expose] public section
 
 /- This file implements an abstract type [CoPset] of (possibly infinite) sets
 of positive binary natural numbers ([Pos]). This type supports the
@@ -544,10 +547,18 @@ def split (X : CoPset) : CoPset × CoPset := (splitLeft X, splitRight X)
 
 end CoPset
 
-instance : Iris.Std.Disjoint CoPset where
-  disjoint s t := ∀ p, p ∈ s -> p ∈ t -> False
+instance : Iris.Std.Set CoPset Pos where
 
-@[symm]
-theorem disj_symm (E1 E2 : CoPset) :
-  E1 ## E2 -> E2 ## E1 := by
-  exact fun Hdisj p HE1 HE2 => Hdisj p HE2 HE1
+instance : Iris.Std.LawfulSet CoPset Pos where
+  ext _ _ h := CoPset.ext h
+  mem_empty := CoPset.mem_empty
+  mem_singleton := CoPset.in_singleton
+  mem_union := CoPset.in_union
+  mem_inter := CoPset.in_inter
+  mem_diff := CoPset.in_diff
+
+instance : DecidableEq CoPset := by
+  intro X Y
+  rcases X, Y with ⟨⟨X⟩, ⟨Y⟩⟩
+  simp
+  infer_instance

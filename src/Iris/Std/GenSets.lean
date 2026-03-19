@@ -3,10 +3,13 @@ Copyright (c) 2026 Zongyuan Liu, Sergei Stepanenko. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Zongyuan Liu, Sergei Stepanenko
 -/
+module
 
+public import Iris.Std.Classes
 import Batteries.Data.List.Perm
-import Iris.Std.Classes
-import Iris.Std.FromMathlib
+import Iris.Std.List
+
+@[expose] public section
 
 /-! ## Abstract Set Interface
 
@@ -52,9 +55,9 @@ class LawfulSet (S : Type _) (A : outParam (Type _)) extends Set S A where
   export LawfulSet (mem_empty mem_singleton
     mem_union mem_inter mem_diff)
 
-section FiniteSet
+attribute [ext] LawfulSet.ext
 
-open FromMathlib
+section FiniteSet
 
 variable {S : Type _} {A : Type _} [Set S A]
 
@@ -81,16 +84,14 @@ export LawfulFiniteSet (mem_toList toList_nodup)
 
 end FiniteSet
 
-namespace Set
+namespace LawfulSet
 
 section GenLemmas
-
-open FromMathlib
 
 variable {S : Type _} {A : Type _} [LawfulSet S A]
 
 /-- Insert an element into a set. Defined as singleton union. -/
-private def ins (x : A) (s : S) : S := {x} ∪ s
+def ins (x : A) (s : S) : S := {x} ∪ s
 
 instance : Insert A S where
   insert := ins
@@ -108,13 +109,6 @@ theorem mem_delete {s : S} {x y : A} : x ∈ (delete y s) ↔ (x ∈ s ∧ x ≠
 
 /-! ### Extensionality and equality -/
 
-/-- Set extensionality: two sets are equal iff they have the same elements.
-    Corresponds to Rocq's `set_ext`. -/
-@[ext]
-theorem ext {X Y : S} : (∀ x : A, x ∈ X ↔ x ∈ Y) → X = Y := by
-  intro H
-  apply LawfulSet.ext (S := S) (A := A) X Y H
-
 /-- Two sets are equal if they are subsets of each other (antisymmetry of subset).
     Corresponds to Rocq's `set_equiv_spec`. -/
 theorem eq_subset {X Y : S} : X ⊆ Y → Y ⊆ X → X = Y := by
@@ -131,7 +125,7 @@ theorem ssubset_subset  {X Y : S} : (X ⊂ Y) ↔ (X ⊆ Y ∧ X ≠ Y) := by
 /-! ### List conversion -/
 
 /-- Helper function that extends a set `s` by inserting all elements from list `l`. -/
-private def ofListExtend (l : List A) (s : S) : S :=
+def ofListExtend (l : List A) (s : S) : S :=
   l.foldl (fun s x => insert x s) s
 
 /-- Convert a list to a set by inserting all elements into the empty set. -/
@@ -800,7 +794,12 @@ theorem ofList_concat {xs ys : List A} : (ofList (xs ++ ys) : S) = ofList xs ∪
 
 end GenLemmas
 
-open FromMathlib in
+end LawfulSet
+
+namespace FiniteSet
+
+open LawfulSet
+
 /-- Map operation on sets. Maps a function over all elements.
     Corresponds to Rocq's `set_map`. -/
 def map {S S' : Type _} {A B : Type _}
@@ -827,8 +826,6 @@ def fold [FiniteSet S A] {β : Type _} (f : β → A → β)
   (toList s).foldl f init
 
 section FinLemmas
-
-open FromMathlib
 
 variable {S : Type _} {A : Type _} [inst : LawfulFiniteSet S A]
 
@@ -1296,4 +1293,5 @@ instance [DecidableEq A] : DecidableEq S := by
 
 end FinLemmas
 
-end Iris.Std.Set
+end FiniteSet
+end Iris.Std
