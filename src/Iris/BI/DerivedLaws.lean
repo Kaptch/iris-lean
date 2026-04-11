@@ -1590,3 +1590,24 @@ theorem bigOp_sep_cons [BI PROP] {P : PROP} {Ps : List PROP} :
 
 theorem bigOp_and_cons [BI PROP] {P : PROP} {Ps : List PROP} :
     [∧] (P :: Ps) ⊣⊢ P ∧ [∧] Ps := bigOp_cons
+
+theorem iter_modal_intro [BI PROP] (M : PROP → PROP) (n : Nat) {P : PROP} :
+  (∀ Q, Q ⊢ M Q) →
+  P ⊢ Nat.fold n (fun _ _ x => M x) P := by
+  intro H
+  induction n with
+  | zero => simp
+  | succ n IH =>
+    simp only [Nat.fold_succ]
+    exact .trans IH (H _)
+
+theorem iter_modal_mono [BI PROP] (M : PROP → PROP) (n : Nat) {P Q : PROP} :
+  (∀ P Q, (P -∗ Q) ⊢ M P -∗ M Q) →
+  (P -∗ Q) ⊢
+  Nat.fold n (fun _ _ x => M x) P -∗ Nat.fold n (fun _ _ x => M x) Q := by
+  intro H
+  induction n with
+  | zero => simp
+  | succ n IH =>
+    simp only [Nat.fold_succ]
+    exact .trans IH (H _ _)
