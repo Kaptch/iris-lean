@@ -562,6 +562,17 @@ theorem later_plainly {P : PROP} : iprop(▷ ■ P ⊣⊢ ■ ▷ P) := by
   exact siPure_later.symm.trans
     ⟨siPure_mono siEmpValid_later.mpr, siPure_mono siEmpValid_later.mp⟩
 
+@[rocq_alias laterN_plainly]
+theorem laterN_plainly {P : PROP} : iprop(▷^[n] ■ P ⊣⊢ ■ ▷^[n] P) := by
+  induction n generalizing P with
+  | zero => exact laterN_0
+  | succ n IH =>
+    rw [show n + 1 = n.succ by rfl]
+    simp [BIBase.laterN]
+    refine .trans ?_ later_plainly
+    refine later_congr ?_
+    exact IH
+
 @[rocq_alias persistently_impl_si_pure_plainly]
 theorem persistently_impl_plainly {P Q : PROP} :
     iprop((■ P → <pers> Q) ⊢ <pers> (■ P → Q)) :=
