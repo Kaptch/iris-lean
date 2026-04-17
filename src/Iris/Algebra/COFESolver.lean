@@ -41,8 +41,18 @@ end
 
 theorem down_up : ∀ {k} x, down F k (up F k x) ≡ x
   | 0, ⟨()⟩ => .rfl
-  | _+1, _ => (map_comp ..).symm.trans <|
-    (map_ne.eqv down_up down_up _).trans (map_id _)
+  | n+1, _ => (by
+    simp only [down, up]
+    refine .trans ?_ (map_id _)
+    refine .trans (map_comp ..).symm ?_
+    congr
+    · ext
+      apply down_up
+    · ext
+      apply down_up
+    )
+    -- (map_comp ..).symm.trans <|
+    -- (map_ne.eqv (down_up _) down_up _).trans (map_id _)
 
 theorem up_down {k} (x) : up F (k+1) (down F (k+1) x) ≡{k}≡ x := by
   refine (map_comp ..).dist.symm.trans <| .trans ?_ (map_id _).dist
@@ -58,14 +68,21 @@ variable (F) in
 instance : CoeFun (Tower F) (fun _ => ∀ k, A F k) := ⟨Tower.val⟩
 
 instance : OFE (Tower F) where
-  Equiv f g := ∀ k, f k ≡ g k
+  -- Equiv f g := ∀ k, f k ≡ g k
   Dist n f g := ∀ k, f k ≡{n}≡ g k
   dist_eqv := {
     refl _ _ := dist_eqv.refl _
     symm h _ := dist_eqv.symm (h _)
     trans h1 h2 _ := dist_eqv.trans (h1 _) (h2 _)
   }
-  equiv_dist {_ _} := by simp [equiv_dist]; apply forall_comm
+  equiv_dist {_ _} := by
+    constructor
+    · rintro ⟨⟩; simp
+    · intro H
+      ext
+      simp [equiv_dist];
+      intro
+      apply H
   dist_lt h1 h2 _ := dist_lt (h1 _) h2
 
 def towerChain (c : Chain (Tower F)) (k : Nat) : Chain (A F k) where
@@ -213,26 +230,54 @@ def Tower.iso : OFE.Iso (F (Tower F) (Tower F)) (Tower F) where
   hom.f X := {
     val n := (down F n).comp (map (Tower.embed _) (Tower.proj _)) X
     down {n} := (down ..).ne.eqv <|
-      (map_comp ..).symm.trans (map_ne.eqv Tower.embed_up (·.down) _)
+      (map_comp ..).symm.trans (by
+        congr
+        ·
+          apply Hom.ext
+          apply funext
+          intro x
+          -- apply Tower.ext
+
+          -- ext
+          -- simp
+
+          refine (Tower.embed_up _).trans ?_
+          rfl
+        · apply Hom.ext
+          apply funext
+          intro x
+          refine ((Tower.down) _).trans ?_
+          rfl) -- map_ne.eqv Tower.embed_up (·.down) _
   }
   hom.ne.1 _ _ _ h _ := by dsimp only; exact (Hom.ne _).1 h
   inv.f X := compl (unfoldChain X)
   inv.ne.1 n _ _ h := by
     refine conv_compl.trans <| .trans ?_ conv_compl.symm
     exact (map ..).ne.1 (h (n+1))
-  hom_inv {X} k := equiv_dist.2 fun n => by
+  hom_inv {X} := equiv_dist.mpr fun n => by
+    simp [Dist]
+    intro k
     refine ((down ..).ne.1 (.trans ?_ (X.downN n).dist)).trans X.down.dist
     refine ((map ..).ne.1 (conv_compl.trans
       ((unfoldChain ..).cauchy (show n ≤ k+n+1 by omega)).symm)).trans ?_
     refine (((map ..).comp _).ne.1 (X.up.le (Nat.le_add_left ..)).symm).trans (Equiv.dist ?_)
     refine ((map_comp ..).trans <| (map ..).ne.eqv (map_comp ..)).symm.trans ?_
     refine .trans (y := map (upN F n) (downN F n) (X (k+n+1))) ?_ ?_
-    · refine map_ne.eqv (fun Y => ?_) (fun Y => ?_) _
-      · simp [Hom.comp, Tower.embed, Tower.proj, embed, (by omega : k ≤ k+n+1)]
+    · congr
+      -- refine map_ne.eqv (fun Y => ?_) (fun Y => ?_) _
+      · apply Hom.ext
+        apply funext
+        intro Y
+
+        simp [Hom.comp, Tower.embed, Tower.proj, embed, (by omega : k ≤ k+n+1)]
         have {a e} : down F (k + n) (eqToHom e (upN F a Y)) ≡ upN F n Y := by
           cases Nat.add_left_cancel (k := n+1) e; exact (down_up _)
         exact this
-      · simp [Hom.comp, Tower.embed, Tower.proj, embed, show ¬k+n+1 ≤ k by omega]
+      · apply Hom.ext
+        apply funext
+        intro Y
+
+        simp [Hom.comp, Tower.embed, Tower.proj, embed, show ¬k+n+1 ≤ k by omega]
         have {a e} : downN F a (eqToHom e (up F (k + n) Y)) ≡ downN F n Y := by
           cases Nat.add_left_cancel (m := n+1) e; exact (downN ..).ne.eqv (down_up _)
         exact this

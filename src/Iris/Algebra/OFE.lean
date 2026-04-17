@@ -13,11 +13,12 @@ namespace Iris
 
 /-- Ordered family of equivalences -/
 class OFE (α : Type _) where
-  Equiv : α → α → Prop
   Dist : Nat → α → α → Prop
   dist_eqv : Equivalence (Dist n)
-  equiv_dist : Equiv x y ↔ ∀ n, Dist n x y
+  equiv_dist : x = y ↔ ∀ n, Dist n x y
   dist_lt : Dist n x y → m < n → Dist m x y
+
+abbrev OFE.Equiv [OFE α] : α → α → Prop := @Eq α
 
 open OFE
 
@@ -37,12 +38,13 @@ theorem Dist.trans [OFE α] {n} {x : α} : x ≡{n}≡ y → y ≡{n}≡ z → x
 theorem Dist.of_eq [OFE α] {x y : α} : x = y → x ≡{n}≡ y := (· ▸ .rfl)
 
 theorem equiv_eqv [ofe : OFE α] : Equivalence ofe.Equiv := by
+  simp only [Equiv]
   constructor
   · rintro x; rw [ofe.equiv_dist]; rintro n; exact Dist.rfl
   · rintro x y; simp [ofe.equiv_dist]; rintro h n; exact Dist.symm (h n)
   · rintro x y z; simp [ofe.equiv_dist]; rintro h₁ h₂ n; exact Dist.trans (h₁ n) (h₂ n)
 
-@[simp, refl] theorem Equiv.rfl [OFE α] {x : α} : x ≡ x := equiv_eqv.1 _
+@[refl] theorem Equiv.rfl [OFE α] {x : α} : x ≡ x := equiv_eqv.1 _
 @[symm] theorem Equiv.symm [OFE α] {x : α} : x ≡ y → y ≡ x := equiv_eqv.2
 theorem Equiv.trans [OFE α] {x : α} : x ≡ y → y ≡ z → x ≡ z := equiv_eqv.3
 theorem Equiv.dist [OFE α] {x : α} : x ≡ y → x ≡{n}≡ y := (equiv_dist.1 · _)
@@ -145,10 +147,9 @@ instance [OFE α] [OFE β] {x : β} : Contractive (fun _ : α => x) where
 
 /-- The discrete OFE obtained from an equivalence relation `Equiv` -/
 @[reducible]
-def ofDiscrete (Equiv : α → α → Prop) (equiv_eqv : Equivalence Equiv) : OFE α where
-  Equiv := Equiv
-  Dist _ := Equiv
-  dist_eqv := equiv_eqv
+def ofDiscrete : OFE α where
+  Dist _ := @Eq α
+  dist_eqv {_} := by constructor <;> simp
   equiv_dist := (forall_const _).symm
   dist_lt h _ := h
 
@@ -231,17 +232,21 @@ theorem InvImage.equivalence {α : Sort u} {β : Sort v}
   trans := H.trans
 
 instance : OFE Unit where
-  Equiv _ _ := True
   Dist _ _ _ := True
   dist_eqv := ⟨fun _ => ⟨⟩, id, fun _ => id⟩
   equiv_dist := by simp
   dist_lt _ _ := ⟨⟩
 
 instance [OFE α] : OFE (ULift α) where
-  Equiv x y := x.down ≡ y.down
   Dist n x y := x.down ≡{n}≡ y.down
   dist_eqv := InvImage.equivalence dist_eqv
-  equiv_dist := equiv_dist
+  equiv_dist := by
+    intro ⟨_⟩ ⟨_⟩
+    constructor
+    · simp; rintro ⟨⟩; simp
+    · intro H
+      simp at *
+      apply equiv_dist.mpr H
   dist_lt := dist_lt
 
 def uliftUpHom [OFE α] : α -n> ULift α where
@@ -264,32 +269,31 @@ theorem _root_.Option.Forall₂.equivalence {R : α → α → Prop}
   trans {x y z} := by cases x <;> cases y <;> cases z <;> simp [Option.Forall₂]; apply H.3
 
 instance [OFE α] : OFE (Option α) where
-  Equiv := Option.Forall₂ Equiv
   Dist n := Option.Forall₂ (Dist n)
   dist_eqv := Option.Forall₂.equivalence dist_eqv
   equiv_dist {x y} := by cases x <;> cases y <;> simp [Option.Forall₂]; apply equiv_dist
   dist_lt {_ x y _} := by cases x <;> cases y <;> simp [Option.Forall₂]; apply dist_lt
 
-instance [OFE α] [OFE.Discrete α] : OFE.Discrete (Option α) where
-  discrete_0 {mx my} e :=
-    match mx, my with
-    | none,   none   => e
-    | none,   some _ => e
-    | some _, none   => e
-    | some x, some y => show x ≡ y from discrete_0 e
+-- instance [OFE α] [OFE.Discrete α] : OFE.Discrete (Option α) where
+--   discrete_0 {mx my} e :=
+--     match mx, my with
+--     | none,   none   => by rw [e]
+--     | none,   some _ => e
+--     | some _, none   => e
+--     | some x, some y => show x ≡ y from discrete_0 e
 
-@[simp] theorem some_eqv_some [OFE α] {x y : α} : (some x ≡ some y) ↔ x ≡ y := .rfl
-@[simp] theorem not_some_eqv_none [OFE α] {x : α} : ¬some x ≡ none := id
-@[simp] theorem not_none_eqv_some [OFE α] {x : α} : ¬none ≡ some x := id
+-- @[simp] theorem some_eqv_some [OFE α] {x y : α} : (some x ≡ some y) ↔ x ≡ y := .rfl
+-- @[simp] theorem not_some_eqv_none [OFE α] {x : α} : ¬some x ≡ none := id
+-- @[simp] theorem not_none_eqv_some [OFE α] {x : α} : ¬none ≡ some x := id
 
 @[simp] theorem some_dist_some [OFE α] {n} {x y : α} : (some x ≡{n}≡ some y) ↔ x ≡{n}≡ y := .rfl
 @[simp] theorem not_some_dist_none [OFE α] {n} {x : α} : ¬some x ≡{n}≡ none := id
 @[simp] theorem not_none_dist_some [OFE α] {n} {x : α} : ¬none ≡{n}≡ some x := id
 
-theorem equiv_some [OFE α] {o : Option α} {y : α} (e : o ≡ some y) :
-    ∃ z, o = some z ∧ z ≡ y := by
-  let .some x := o
-  exact ⟨x, rfl, e⟩
+-- theorem equiv_some [OFE α] {o : Option α} {y : α} (e : o ≡ some y) :
+--     ∃ z, o = some z ∧ z ≡ y := by
+--   let .some x := o
+--   exact ⟨x, rfl, e⟩
 
 theorem equiv_none [OFE α] {o : Option α} : o ≡ none ↔ o = none :=
   ⟨fun _ => let .none := o; rfl, (· ▸ .rfl)⟩
@@ -303,25 +307,25 @@ theorem dist_some [OFE α] {n mx y} (h : mx ≡{n}≡ some y) :
     | some t => ⟨t, rfl, (e2 ▸ e1 : some t ≡{n}≡ some y)⟩
     | none => False.elim (e2 ▸ e1 : none ≡{n}≡ some y)
 
-instance [OFE α] [Leibniz α] : Leibniz (Option α) where
-  eq_of_eqv {x y} H :=
-    match x, y, H with
-    | none, none, _ => rfl
-    | some _, some _, h => congrArg some (Leibniz.eq_of_eqv h)
+-- instance [OFE α] [Leibniz α] : Leibniz (Option α) where
+--   eq_of_eqv {x y} H :=
+--     match x, y, H with
+--     | none, none, _ => rfl
+--     | some _, some _, h => congrArg some (Leibniz.eq_of_eqv h)
 
-instance [OFE α] [Discrete α] : Discrete (Option α) where
-  discrete_0 {x y} H :=
-    match x, y with
-    | none, none => H
-    | some _, some _ => some_eqv_some.mpr (discrete_0 H)
+-- instance [OFE α] [Discrete α] : Discrete (Option α) where
+--   discrete_0 {x y} H :=
+--     match x, y with
+--     | none, none => H
+--     | some _, some _ => some_eqv_some.mpr (discrete_0 H)
 
 instance OFE.Option.some.ne [OFE α] : OFE.NonExpansive (some : α → Option α) := ⟨fun _ _ _ => id⟩
 
-theorem Option.some_is_discrete [OFE α] {a : α} (Ha : DiscreteE a) : DiscreteE (some a) := by
-  constructor
-  rintro (_|_) H
-  · exact H
-  · exact Ha.discrete H
+-- theorem Option.some_is_discrete [OFE α] {a : α} (Ha : DiscreteE a) : DiscreteE (some a) := by
+--   constructor
+--   rintro (_|_) H
+--   · exact H
+--   · exact Ha.discrete H
 
 /-- Note: Not an instance, due to instance coherence problems. -/
 theorem Option.ne_match [OFE α] {B : Type _} [OFE B]
@@ -342,36 +346,62 @@ instance Option.merge_ne [OFE α] {op : α → α → α} [NonExpansive₂ op] :
 abbrev OFEFun {α : Type _} (β : α → Type _) := ∀ a, OFE (β a)
 
 instance [OFEFun (β : α → _)] : OFE ((x : α) → β x) where
-  Equiv f g := ∀ x, f x ≡ g x
+  -- Equiv f g := ∀ x, f x ≡ g x
   Dist n f g := ∀ x, f x ≡{n}≡ g x
   dist_eqv := {
     refl _ _ := dist_eqv.refl _
     symm h _ := dist_eqv.symm (h _)
     trans h1 h2 _ := dist_eqv.trans (h1 _) (h2 _)
   }
-  equiv_dist {_ _} := by simp [equiv_dist]; apply forall_comm
+  equiv_dist {_ _} := by
+    constructor
+    · rintro ⟨⟩
+      intro _ _; rfl
+    · intro H
+      ext
+      simp [equiv_dist]
+      intro
+      apply H
   dist_lt h1 h2 _ := dist_lt (h1 _) h2
 
 instance [OFE α] [OFE β] : OFE (α -n> β) where
-  Equiv f g := f.f ≡ g.f
+  -- Equiv f g := f.f ≡ g.f
   Dist n f g := f.f ≡{n}≡ g.f
   dist_eqv := {
     refl _ := dist_eqv.refl _
     symm h := dist_eqv.symm h
     trans h1 h2 := dist_eqv.trans h1 h2
   }
-  equiv_dist := equiv_dist
+  equiv_dist := by
+    intro _ _
+    constructor
+    · rintro ⟨⟩
+      intro; rfl
+    · intro H
+      ext
+      apply equiv_dist.mpr
+      intro
+      apply H
   dist_lt := dist_lt
 
 instance [OFE α] [OFE β] : OFE (α -c> β) where
-  Equiv f g := Equiv f.toHom g.toHom
+  -- Equiv f g := Equiv f.toHom g.toHom
   Dist n f g := Dist n f.toHom g.toHom
   dist_eqv := {
     refl _ := dist_eqv.refl _
     symm h := dist_eqv.symm h
     trans h1 h2 := dist_eqv.trans h1 h2
   }
-  equiv_dist := equiv_dist
+  equiv_dist := by
+    intro _ _
+    constructor
+    · rintro ⟨⟩ _
+      rfl
+    · intro H
+      ext
+      apply equiv_dist.mpr
+      intro
+      apply H
   dist_lt := dist_lt
 
 def applyHom [OFEFun (β : α → _)] (x : α) : ((x : α) → β x) -n> β x where
@@ -384,83 +414,86 @@ def mapCodHom [OFEFun (β₁ : α → _)] [OFEFun β₂]
   ne.1 _ _ _ H x := (F x).ne.1 (H x)
 
 instance [OFE α] [OFE β] : OFE (α × β) where
-  Equiv a b := a.1 ≡ b.1 ∧ a.2 ≡ b.2
+  -- Equiv a b := a.1 ≡ b.1 ∧ a.2 ≡ b.2
   Dist n a b := a.1 ≡{n}≡ b.1 ∧ a.2 ≡{n}≡ b.2
   dist_eqv := {
     refl _ := ⟨dist_eqv.refl _, dist_eqv.refl _⟩
     symm h := ⟨dist_eqv.symm h.1, dist_eqv.symm h.2⟩
     trans h1 h2 := ⟨dist_eqv.trans h1.1 h2.1, dist_eqv.trans h1.2 h2.2⟩
   }
-  equiv_dist {_ _} := by simp [equiv_dist, forall_and]
+  equiv_dist {a b} := by
+    cases a
+    cases b
+    simp [equiv_dist, forall_and]
   dist_lt h1 h2 := ⟨dist_lt h1.1 h2, dist_lt h1.2 h2⟩
 
-theorem equiv_fst [OFE α] [OFE β] {x y : α × β} (h : x ≡ y) : x.fst ≡ y.fst := h.left
-theorem equiv_snd [OFE α] [OFE β] {x y : α × β} (h : x ≡ y) : x.snd ≡ y.snd := h.right
+theorem equiv_fst [OFE α] [OFE β] {x y : α × β} (h : x ≡ y) : x.fst ≡ y.fst := h.substr rfl
+theorem equiv_snd [OFE α] [OFE β] {x y : α × β} (h : x ≡ y) : x.snd ≡ y.snd := h.substr rfl
 theorem equiv_prod_ext [OFE α] [OFE β] {x₁ x₂ : α} {y₁ y₂ : β}
-    (ex : x₁ ≡ x₂) (ey : y₁ ≡ y₂) : (x₁, y₁) ≡ (x₂, y₂) := ⟨ex, ey⟩
+    (ex : x₁ ≡ x₂) (ey : y₁ ≡ y₂) : (x₁, y₁) ≡ (x₂, y₂) := ex.substr (ey.substr rfl)
 
 theorem dist_fst {n} [OFE α] [OFE β] {x y : α × β} (h : x ≡{n}≡ y) : x.fst ≡{n}≡ y.fst := h.left
 theorem dist_snd {n} [OFE α] [OFE β] {x y : α × β} (h : x ≡{n}≡ y) : x.snd ≡{n}≡ y.snd := h.right
 theorem dist_prod_ext {n} [OFE α] [OFE β] {x₁ x₂ : α} {y₁ y₂ : β}
     (ex : x₁ ≡{n}≡ x₂) (ey : y₁ ≡{n}≡ y₂) : (x₁, y₁) ≡{n}≡ (x₂, y₂) := ⟨ex, ey⟩
 
-/-- Note: Not an instance, due to instance coherence problems. -/
-theorem prod_mk_ne_left [OFE α] [OFE β] (b : β) : NonExpansive (β := α × β) (·, b) :=
-  ⟨fun {_ _ _} h => dist_prod_ext h Dist.rfl⟩
+-- /-- Note: Not an instance, due to instance coherence problems. -/
+-- theorem prod_mk_ne_left [OFE α] [OFE β] (b : β) : NonExpansive (β := α × β) (·, b) :=
+--   ⟨fun {_ _ _} h => dist_prod_ext h Dist.rfl⟩
 
-/-- Note: Not an instance, due to instance coherence problems. -/
-theorem prod_mk_ne_right [OFE α] [OFE β] (a : α) : NonExpansive (β := α × β) (a, ·) :=
-  ⟨fun {_ _ _} h => dist_prod_ext Dist.rfl h⟩
+-- /-- Note: Not an instance, due to instance coherence problems. -/
+-- theorem prod_mk_ne_right [OFE α] [OFE β] (a : α) : NonExpansive (β := α × β) (a, ·) :=
+--   ⟨fun {_ _ _} h => dist_prod_ext Dist.rfl h⟩
 
-instance [OFE α] [OFE β] : NonExpansive (Prod.fst (α := α) (β := β)) :=
-  ⟨fun {_ _ _} h => dist_fst h⟩
+-- instance [OFE α] [OFE β] : NonExpansive (Prod.fst (α := α) (β := β)) :=
+--   ⟨fun {_ _ _} h => dist_fst h⟩
 
-instance [OFE α] [OFE β] : NonExpansive (Prod.snd (α := α) (β := β)) :=
-  ⟨fun {_ _ _} h => dist_snd h⟩
+-- instance [OFE α] [OFE β] : NonExpansive (Prod.snd (α := α) (β := β)) :=
+--   ⟨fun {_ _ _} h => dist_snd h⟩
 
-/-- Note: Not an instance, due to instance coherence problems. -/
-theorem NonExpansive₂.uncurry [OFE α] [OFE β] [OFE γ] {f : α → β → γ} (hf : NonExpansive₂ f) :
-    NonExpansive (Function.uncurry f) :=
-  ⟨fun {_ _ _} (h : _ ∧ _) => hf.ne h.1 h.2⟩
+-- /-- Note: Not an instance, due to instance coherence problems. -/
+-- theorem NonExpansive₂.uncurry [OFE α] [OFE β] [OFE γ] {f : α → β → γ} (hf : NonExpansive₂ f) :
+--     NonExpansive (Function.uncurry f) :=
+--   ⟨fun {_ _ _} (h : _ ∧ _) => hf.ne h.1 h.2⟩
 
-theorem prod.is_discrete [OFE α] [OFE β] {a : α} {b : β} (Ha : DiscreteE a) (Hb : DiscreteE b) :
-    DiscreteE (a, b) := by
-  constructor
-  intro y H; refine ⟨Ha.discrete H.1, Hb.discrete H.2⟩
+-- theorem prod.is_discrete [OFE α] [OFE β] {a : α} {b : β} (Ha : DiscreteE a) (Hb : DiscreteE b) :
+--     DiscreteE (a, b) := by
+--   constructor
+--   intro y H; refine ⟨Ha.discrete H.1, Hb.discrete H.2⟩
 
-instance [OFE α] [OFE β] [Discrete α] [Discrete β] : Discrete (α × β) where
-  discrete_0 H := by
-    constructor
-    · apply Discrete.discrete_0
-      apply H.1
-    · apply Discrete.discrete_0
-      apply H.2
+-- instance [OFE α] [OFE β] [Discrete α] [Discrete β] : Discrete (α × β) where
+--   discrete_0 H := by
+--     constructor
+--     · apply Discrete.discrete_0
+--       apply H.1
+--     · apply Discrete.discrete_0
+--       apply H.2
 
-@[rocq_alias sig_ofe_mixin]
-instance [OFE α] (P : α → Prop) : OFE (Subtype P) where
-  Equiv x y := x.val ≡ y.val
-  Dist n x y := x.val ≡{n}≡ y.val
-  dist_eqv := ⟨fun _ => .rfl, Dist.symm, Dist.trans⟩
-  equiv_dist := equiv_dist
-  dist_lt := dist_lt
+-- @[rocq_alias sig_ofe_mixin]
+-- instance [OFE α] (P : α → Prop) : OFE (Subtype P) where
+--   Equiv x y := x.val ≡ y.val
+--   Dist n x y := x.val ≡{n}≡ y.val
+--   dist_eqv := ⟨fun _ => .rfl, Dist.symm, Dist.trans⟩
+--   equiv_dist := equiv_dist
+--   dist_lt := dist_lt
 
-@[rocq_alias sig_discrete]
-instance [OFE α] [Discrete α] (P : α → Prop) : Discrete (Subtype P) where
-  discrete_0 h := @Discrete.discrete_0 α _ _ _ _ h
+-- @[rocq_alias sig_discrete]
+-- instance [OFE α] [Discrete α] (P : α → Prop) : Discrete (Subtype P) where
+--   discrete_0 h := @Discrete.discrete_0 α _ _ _ _ h
 
-@[rocq_alias proj1_sig_ne]
-instance [OFE α] (P : α → Prop) : NonExpansive (Subtype.val : Subtype P → α) where
-  ne {_ _ _} := id
+-- @[rocq_alias proj1_sig_ne]
+-- instance [OFE α] (P : α → Prop) : NonExpansive (Subtype.val : Subtype P → α) where
+--   ne {_ _ _} := id
 
-instance Hom.ofSubtype_ne [OFE α] [OFE β] : NonExpansive (Hom.ofSubtype (α := α) (β := β)) :=
-  ⟨fun {_ _ _} h => h⟩
+-- instance Hom.ofSubtype_ne [OFE α] [OFE β] : NonExpansive (Hom.ofSubtype (α := α) (β := β)) :=
+--   ⟨fun {_ _ _} h => h⟩
 
 /-- Extract the underlying subtype from a `Hom`. -/
 def Hom.toSubtype [OFE α] [OFE β] (f : α -n> β) : { f : α → β // NonExpansive f } :=
   ⟨f.f, f.ne⟩
 
-instance Hom.toSubtype_ne [OFE α] [OFE β] : NonExpansive (Hom.toSubtype (α := α) (β := β)) :=
-  ⟨fun {_ _ _} h => h⟩
+-- instance Hom.toSubtype_ne [OFE α] [OFE β] : NonExpansive (Hom.toSubtype (α := α) (β := β)) :=
+--   ⟨fun {_ _ _} h => h⟩
 
 /-- An isomorphism between two OFEs is a pair of morphisms whose composition is equivalent to the
 identity morphism. -/
@@ -524,16 +557,16 @@ def Iso.symm [OFE α] [OFE β] (iso : Iso α β) : Iso β α where
   hom_inv := by intro x; simp
   inv_hom := by intro x; simp
 
-/-- Composition of OFE isomorphisms -/
-def Iso.comp [OFE α] [OFE β] [OFE γ] (iso1 : Iso β γ) (iso2 : Iso α β) : Iso α γ where
-  hom := iso1.hom.comp iso2.hom
-  inv := iso2.inv.comp iso1.inv
-  hom_inv := by
-    intro x; simp
-    exact .trans (NonExpansive.eqv <| .trans iso2.hom_inv .rfl) iso1.hom_inv
-  inv_hom := by
-    intro x; simp
-    exact .trans (NonExpansive.eqv <| .trans iso1.inv_hom .rfl) iso2.inv_hom
+-- /-- Composition of OFE isomorphisms -/
+-- def Iso.comp [OFE α] [OFE β] [OFE γ] (iso1 : Iso β γ) (iso2 : Iso α β) : Iso α γ where
+--   hom := iso1.hom.comp iso2.hom
+--   inv := iso2.inv.comp iso1.inv
+--   hom_inv := by
+--     intro x; simp
+--     exact .trans (NonExpansive.eqv <| .trans iso2.hom_inv .rfl) iso1.hom_inv
+--   inv_hom := by
+--     intro x; simp
+--     exact .trans (NonExpansive.eqv <| .trans iso1.inv_hom .rfl) iso2.inv_hom
 
 end OFE
 
@@ -635,8 +668,8 @@ theorem compl_map [COFE α] [COFE β] (f : α -n> β) (c : Chain α) :
 
 /-- The discrete COFE obtained from an equivalence relation `Equiv` -/
 @[reducible]
-def ofDiscrete (Equiv : α → α → Prop) (equiv_eqv : Equivalence Equiv) : COFE α :=
-  let _ := OFE.ofDiscrete Equiv equiv_eqv
+def ofDiscrete : COFE α :=
+  let _ := OFE.ofDiscrete (α := α)
   { compl := fun c => c 0
     conv_compl := fun {_ c} => equiv_eqv.2 (c.cauchy (Nat.zero_le _)) }
 
@@ -698,7 +731,7 @@ end COFE
 theorem Eq_Equivalence {α : Type _} : Equivalence (@Eq α) :=
   ⟨congrFun rfl, (Eq.symm ·), (· ▸ ·)⟩
 
-instance : COFE (LeibnizO α) := COFE.ofDiscrete _ Eq_Equivalence
+instance : COFE (LeibnizO α) := COFE.ofDiscrete
 
 instance : Leibniz (LeibnizO α) := ⟨(·)⟩
 
@@ -722,8 +755,12 @@ instance oFunctor_discreteFunOF {C} (F : C → OFunctorPre) [∀ c, OFunctor (F 
   cofe := _
   map f₁ f₂ := mapCodHom fun c => OFunctor.map f₁ f₂
   map_ne.ne _ _ _ Hx _ _ Hy _ _ := by apply OFunctor.map_ne.ne Hx Hy
-  map_id _ _ := by apply OFunctor.map_id
-  map_comp _ _ _ _ _ _ := by apply OFunctor.map_comp
+  map_id _ := by
+    ext
+    apply OFunctor.map_id
+  map_comp _ _ _ _ _ := by
+    ext
+    apply OFunctor.map_comp
 
 end DiscreteFunOF
 
@@ -748,40 +785,40 @@ def optionMap {α β : Type _} [OFE α] [OFE β] (f : α -n> β) : Option α -n>
   rintro _ ⟨⟩ ⟨⟩ H <;> simp_all [Dist, Option.Forall₂]
   exact f.ne.ne H
 
-theorem Option.map_forall₂ {α β : Type _} [OFE α] [OFE β] (f : α → β) [hf : OFE.NonExpansive f]
+theorem Option.map_forall₂ {α β : Type _} [OFE α] [OFE β] (f : α → β) [OFE.NonExpansive f]
     {o1 o2 : Option α} (h : o1 ≡ o2) : o1.map f ≡ o2.map f := by
   cases o1 <;> cases o2 <;> simp_all []
-  exact hf.eqv h
+  -- exact hf.eqv h
 
 end Option
 
-section OptionOF
-open COFE
+-- section OptionOF
+-- open COFE
 
-abbrev OptionOF (F : OFunctorPre) : OFunctorPre :=
-  fun A B _ _ => Option (F A B)
+-- abbrev OptionOF (F : OFunctorPre) : OFunctorPre :=
+--   fun A B _ _ => Option (F A B)
 
-variable (F : OFunctorPre)
+-- variable (F : OFunctorPre)
 
-instance oFunctorOption [OFunctor F] : OFunctor (OptionOF F) where
-  cofe := _
-  map f g := optionMap (OFunctor.map f g)
-  map_ne.ne _ _ _ Hx _ _ Hy z := by
-    cases z <;> simp [optionMap, Dist, Option.Forall₂]
-    apply OFunctor.map_ne.ne Hx Hy
-  map_id z := by
-    cases z <;> simp [optionMap, Equiv, Option.Forall₂]
-    apply OFunctor.map_id
-  map_comp _ _ _ _ z := by
-    cases z <;> simp [optionMap, Equiv, Option.Forall₂]
-    apply OFunctor.map_comp
+-- instance oFunctorOption [OFunctor F] : OFunctor (OptionOF F) where
+--   cofe := _
+--   map f g := optionMap (OFunctor.map f g)
+--   map_ne.ne _ _ _ Hx _ _ Hy z := by
+--     cases z <;> simp [optionMap, Dist, Option.Forall₂]
+--     apply OFunctor.map_ne.ne Hx Hy
+--   map_id z := by
+--     cases z <;> simp [optionMap, Equiv, Option.Forall₂]
+--     apply OFunctor.map_id
+--   map_comp _ _ _ _ z := by
+--     cases z <;> simp [optionMap, Equiv, Option.Forall₂]
+--     apply OFunctor.map_comp
 
-instance [OFunctorContractive F] : OFunctorContractive (OptionOF F) where
-  map_contractive.1 H z := by
-    have := (OFunctorContractive.map_contractive (F := F)).distLater_dist H
-    cases z <;> simp_all [optionMap, Dist, Option.Forall₂, Function.uncurry, OFunctor.map]
+-- instance [OFunctorContractive F] : OFunctorContractive (OptionOF F) where
+--   map_contractive.1 H z := by
+--     have := (OFunctorContractive.map_contractive (F := F)).distLater_dist H
+--     cases z <;> simp_all [optionMap, Dist, Option.Forall₂, Function.uncurry, OFunctor.map]
 
-end OptionOF
+-- end OptionOF
 
 section Fixpoint
 
@@ -994,12 +1031,23 @@ structure Later (A : Type u) : Type u where
   next :: car : A
 
 instance isOFE_later [OFE A] : OFE (Later A) where
-  Equiv x y := x.car ≡ y.car
+  -- Equiv x y := x.car ≡ y.car
   Dist n x y := DistLater n x.car y.car
   dist_eqv := ⟨fun _ => .rfl, .symm, .trans⟩
   equiv_dist := by
-    simp only [equiv_dist, DistLater]
-    exact ⟨by simp +contextual, fun H n => H (Nat.succ n) n (by simp)⟩
+    simp only [DistLater]
+    intro ⟨x⟩ ⟨y⟩
+    constructor
+    · rintro ⟨⟩ _ _ _
+      simp
+    · intro H
+      simp at *
+      apply equiv_dist.mpr
+      intro n
+      specialize (H (.succ n) n)
+      apply H
+      simp
+    -- exact ⟨by simp +contextual, fun H n => (H (Nat.succ n) n (by simp))⟩
   dist_lt Hxy Hmn _ Hkm := Hxy _ (Nat.lt_trans Hkm Hmn)
 
 instance NextContractive {A : Type _} [OFE A] : Contractive (@Later.next A) where
@@ -1035,8 +1083,14 @@ instance oFunctorLater [OFunctor F] : OFunctor (LaterOF F) where
   cofe := _
   map f g := laterMap (OFunctor.map f g)
   map_ne.ne _ _ _ Hx _ _ Hy _ _ := (OFunctor.map_ne.ne Hx Hy _).lt
-  map_id _ := OFunctor.map_id _
-  map_comp _ _ _ _ _ := OFunctor.map_comp ..
+  map_id := by
+    intro _ _ _ _ ⟨_⟩
+    simp [laterMap]
+    apply OFunctor.map_id _
+  map_comp _ _ _ := by
+    intro _ ⟨_⟩
+    simp [laterMap]
+    apply OFunctor.map_comp ..
 
 instance [OFunctorContractive F] : OFunctorContractive (LaterOF F) where
   map_contractive.1 H z m := Dist.lt <| by
@@ -1045,20 +1099,20 @@ instance [OFunctorContractive F] : OFunctorContractive (LaterOF F) where
 
 end LaterOF
 
-section subtype
+-- section subtype
 
-instance [OFE α] {P : α → Prop} : OFE { x : α // P x } where
-  Equiv := (·.val ≡ ·.val)
-  Dist n := (·.val ≡{n}≡ ·.val)
-  dist_eqv := {
-    refl x := dist_eqv.refl x.val
-    symm H := H.symm
-    trans H1 H2 := H1.trans H2
-  }
-  equiv_dist := equiv_dist
-  dist_lt := dist_lt
+-- instance [OFE α] {P : α → Prop} : OFE { x : α // P x } where
+--   Equiv := (·.val ≡ ·.val)
+--   Dist n := (·.val ≡{n}≡ ·.val)
+--   dist_eqv := {
+--     refl x := dist_eqv.refl x.val
+--     symm H := H.symm
+--     trans H1 H2 := H1.trans H2
+--   }
+--   equiv_dist := equiv_dist
+--   dist_lt := dist_lt
 
-end subtype
+-- end subtype
 
 theorem OFE.cast_dist [Iα : OFE α] [Iβ : OFE β] {x y : α}
     (Ht : α = β) (HIt : Iα = Ht ▸ Iβ)  (H : x ≡{n}≡ y) :
