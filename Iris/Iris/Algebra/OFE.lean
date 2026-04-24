@@ -296,6 +296,11 @@ theorem equiv_some [OFE α] {o : Option α} {y : α} (e : o ≡ some y) :
 theorem equiv_none [OFE α] {o : Option α} : o ≡ none ↔ o = none :=
   ⟨fun _ => let .none := o; rfl, (· ▸ .rfl)⟩
 
+theorem dist_none [OFE α] {n} {mx : Option α} (h : mx ≡{n}≡ none) : mx = none :=
+  match mx with
+  | some _ => (not_some_dist_none h).elim
+  | none => rfl
+
 theorem dist_some [OFE α] {n mx y} (h : mx ≡{n}≡ some y) :
     ∃ z : α, mx = some z ∧ y ≡{n}≡ z :=
   suffices hh : ∀ mx my y, mx ≡{n}≡ my → my = some y → ∃ t, mx = some t ∧ t ≡{n}≡ y from
@@ -340,6 +345,21 @@ instance Option.merge_ne [OFE α] {op : α → α → α} [NonExpansive₂ op] :
   ne n x1 x2 Hx y1 y2 Hy := by
     rcases x1, x2, y1, y2 with ⟨_|_, _|_, _|_, _|_⟩ <;> simp_all
     exact NonExpansive₂.ne Hx Hy
+
+instance Option.bind_fun_ne [OFE α] [OFE β] (f : α → Option β) [NonExpansive f] : NonExpansive (flip Option.bind f) where
+  ne _ _ x2 Hx := match x2 with
+    | some _ => (dist_some Hx).choose_spec.left ▸ (NonExpansive.ne (f := f) (dist_some Hx).choose_spec.right.symm)
+    | none => (dist_none Hx).symm ▸ .rfl
+
+theorem Option.bind_dist [OFE α] [OFE β] {x : Option α} {f g : α → Option β} (H : ∀ x, f x ≡{n}≡ g x) : Option.bind x f ≡{n}≡ Option.bind x g :=
+  match x with
+  | some _ => H _
+  | none => .rfl
+
+theorem Option.bind_equiv [OFE α] [OFE β] {x : Option α} {f g : α → Option β} (H : ∀ x, f x ≡ g x) : Option.bind x f ≡ Option.bind x g :=
+  match x with
+  | some _ => H _
+  | none => .rfl
 
 abbrev OFEFun {α : Type _} (β : α → Type _) := ∀ a, OFE (β a)
 

@@ -13,6 +13,47 @@ This file provides introduction rules (BI entailments) for (some) CMRA operation
 
 -- TODO: Need sbi_unfold to make these proofs less horrific
 namespace Iris
+
+section prod
+
+open BI Std BIBase.BiEntails
+
+@[rocq_alias prod_validI]
+theorem prod_validI [Sbi PROP] [CMRA A] [CMRA B] (x : A × B) :
+    internalCmraValid x ⊣⊢@{PROP} internalCmraValid x.1 ∧ internalCmraValid x.2 := by
+  simp only [internalCmraValid]
+  refine .trans ?_ siPure_and
+  refine siPure_mono_bi ?_
+  cases x with | mk x1 x2 =>
+  exact ⟨fun _ => id, fun _ => id⟩
+
+@[rocq_alias prod_includedI]
+theorem prod_includedI [Sbi PROP] [CMRA A] [CMRA B] (x y : A × B) :
+    internalCmraIncluded x y ⊣⊢@{PROP} internalCmraIncluded x.1 y.1 ∧ internalCmraIncluded x.2 y.2 := by
+  simp only [internalCmraIncluded,  internalEq]
+  refine .trans ?_ siPure_and
+  refine siPure_mono_bi ?_
+  refine siPure_exist.symm.trans ?_
+  refine .trans ?_ (and_congr_l siPure_exist)
+  refine .trans ?_ (and_congr_r siPure_exist)
+  refine .trans ?_ siPure_and
+  refine siPure_mono_bi ?_
+  cases x with | mk x1 x2 =>
+  cases y with | mk y1 y2 =>
+  simp only [CMRA.op, Prod.op]
+  constructor
+  · intro n ⟨x, ⟨⟨⟨a, b⟩, H1⟩, H2⟩⟩
+    refine ⟨⟨x, ⟨⟨a, ?_⟩, H2⟩⟩, ⟨x, ⟨⟨b, ?_⟩, H2⟩⟩⟩
+    simp only [←H1]
+
+    sorry
+    simp only [←H1]
+
+    sorry
+  · sorry
+
+end prod
+
 section heap_view
 
 open HeapView BI Std PartialMap LawfulPartialMap BIBase.BiEntails
