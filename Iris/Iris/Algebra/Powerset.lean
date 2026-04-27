@@ -1,16 +1,171 @@
 module
 
 public import Iris.Algebra.OFE
-meta import Iris.Std.RocqPorting
 
 @[expose] public section
 
 namespace Iris
 
+section completion
+
+def Completion (α : Type u) [OFE α] := Chain α
+instance {α : Type u} [OFE α] : OFE (Completion α) where
+  Dist n x y := (x.chain n) ≡{n}≡ (y.chain n)
+  Equiv x y := ∀ n : Nat, (x.chain n) ≡{n}≡ (y.chain n)
+  dist_eqv {n} := by
+    constructor
+    · intro x; rfl
+    · intro x y H; symm; apply H
+    · intro x y z H1 H2; exact H1.trans H2
+  equiv_dist := .rfl
+  dist_lt {n x y m H Hlt} := by
+    refine (x.cauchy (Nat.le_of_lt Hlt)).symm.trans ?_
+    refine (H.lt Hlt).trans ?_
+    exact y.cauchy (Nat.le_of_lt Hlt)
+instance {α : Type u} [OFE α] : IsCOFE (Completion α) where
+  compl c := {
+    chain n := (c.chain n).chain n
+    cauchy {n i} Hle := .trans (((c.chain i).cauchy Hle).trans .rfl) (c.cauchy Hle)
+  }
+  conv_compl {n c} := by simp only [OFE.Dist, OFE.Dist.rfl]
+
+namespace Completion
+
+-- completion monad
+def unit {α : Type u} [OFE α] : α -n> Completion α := ⟨Chain.const, ⟨fun {_ _ _} H => H⟩⟩
+def bind {α β : Type u} [OFE α] [OFE β] : (α -n> Completion β) -n> (Completion α -n> Completion β) :=
+  ⟨fun f => ⟨fun x => IsCOFE.compl (x.map f)
+    , ⟨fun _ _ _ H => by refine IsCOFE.conv_compl.trans (.trans ?_ IsCOFE.conv_compl.symm); exact (f.ne.ne H)⟩⟩
+  , ⟨fun _ x y H => by
+      intro a; simp [OFE.Dist]
+      refine (IsCOFE.conv_compl (c := Chain.map x a)).trans ?_
+      exact .trans (H _) (IsCOFE.conv_compl (c := Chain.map y a)).symm⟩⟩
+theorem unit_left {α β : Type u} [OFE α] [OFE β] {f : α -n> Completion β}
+  : (bind f).comp (unit (α := α)) ≡ f := by
+  intro x; simp only [bind, unit, OFE.Hom.comp_apply]
+  exact OFE.equiv_dist.mpr (fun n => IsCOFE.conv_compl)
+theorem unit_right {α : Type u} [OFE α]
+  : bind (α := α) (β := α) unit ≡ OFE.Hom.id := by
+  intro x; simp only [bind, unit]
+  refine OFE.equiv_dist.mpr (fun n => ?_)
+  refine IsCOFE.conv_compl.trans ?_
+  simp [Chain.const, OFE.Dist]
+theorem bind_assoc {α β γ : Type u} [OFE α] [OFE β] [OFE γ]
+  {f : α -n> Completion β} {g : β -n> Completion γ}
+  : (bind g).comp (bind f) ≡ bind ((bind g).comp f) := by
+  intro x; simp only [bind]
+  refine OFE.equiv_dist.mpr (fun n => ?_)
+  refine IsCOFE.conv_compl.trans ?_
+  refine .trans ?_ IsCOFE.conv_compl.symm
+  refine .trans ?_ IsCOFE.conv_compl.symm
+  simp only [Chain.map_apply]
+  refine OFE.NonExpansive.ne ?_
+  exact (IsCOFE.conv_compl (c := Chain.map f x))
+
+-- derived functor
+abbrev map {α β : Type u} [OFE α] [OFE β] : (α -n> β) → (Completion α -n> Completion β) :=
+  fun f => bind (unit.comp f)
+instance {α β : Type u} [OFE α] [OFE β] : OFE.NonExpansive (map (α := α) (β := β)) where
+  ne {n x y} H := by
+    simp only [map]
+    refine OFE.NonExpansive.ne (fun a => ?_)
+    simp only [OFE.Hom.comp_apply]
+    refine OFE.NonExpansive.ne ?_
+    exact H _
+theorem map_id {α : Type u} [OFE α] : map (OFE.Hom.id (α := α)) ≡ OFE.Hom.id := by
+  simp only [map, OFE.Hom.comp_id]
+  exact unit_right
+theorem map_comp {α β γ : Type u} [OFE α] [OFE β] [OFE γ] {g : β -n> γ} {f : α -n> β}
+  : map (g.comp f) ≡ (map g).comp (map f) := by
+  simp only [map, ←OFE.Hom.comp_assoc]
+  refine .trans ?_ bind_assoc.symm
+  rfl
+theorem unit_natural {α β : Type u} [OFE α] [OFE β] {f : α -n> β}
+  : (map f).comp unit ≡ unit.comp f := by
+  simp only [map]
+  exact unit_left
+
+-- completion is idempotent
+def idemp {α : Type u} [OFE α] [IsCOFE α] : OFE.Iso α (Completion α) where
+  hom := unit
+  inv := ⟨IsCOFE.compl, ⟨fun {_ _ _} H => by
+    refine IsCOFE.conv_compl.trans ?_
+    refine .trans ?_ IsCOFE.conv_compl.symm
+    exact H⟩⟩
+  hom_inv {x} i := by
+    simp only [unit, Chain.const]
+    exact IsCOFE.conv_compl
+  inv_hom {x} := by
+    simp only [unit]
+    refine OFE.equiv_dist.mpr (fun n => ?_)
+    exact IsCOFE.conv_compl
+
+-- universality
+def universal {α β : Type u} [OFE α] [OFE β] [IsCOFE β] (f : α -n> β) : Completion α -n> β where
+  f x := IsCOFE.compl (x.map f)
+  ne := ⟨fun n x y H => by
+    refine IsCOFE.conv_compl.trans ?_
+    refine .trans ?_ IsCOFE.conv_compl.symm
+    simp only [map]
+    suffices H : ((bind.f (unit.comp f)).f x) ≡{n}≡ ((bind.f (unit.comp f)).f y) by
+      exact H
+    exact OFE.NonExpansive.ne H⟩
+theorem universal_comm {α β : Type u} [OFE α] [OFE β] [IsCOFE β] {f : α -n> β} : f ≡ (universal f).comp unit := by
+  intro x; simp only [universal, OFE.Hom.comp_apply]
+  refine OFE.equiv_dist.mpr (fun n => ?_)
+  refine .trans ?_ IsCOFE.conv_compl.symm
+  rfl
+theorem universal_unique {α β : Type u} [OFE α] [OFE β] [IsCOFE β] {f : α -n> β} {g : Completion α -n> β}
+  (H : f ≡ g.comp unit) : g ≡ universal f := by
+  intro x; simp only [universal]
+  refine OFE.equiv_dist.mpr (fun n => ?_)
+  refine .trans ?_ IsCOFE.conv_compl.symm
+  simp only [map]
+
+  sorry
+
+end Completion
+
+-- wrapper
+abbrev CompletionOF (F : COFE.OFunctorPre) [COFE.OFunctor F] : COFE.OFunctorPre :=
+  fun A B _ _ => Completion (F A B)
+instance [COFE.OFunctor F] : COFE.OFunctor (CompletionOF F) where
+  cofe := inferInstance
+  map f g := Completion.map (COFE.OFunctor.map f g)
+  map_ne {_ _ _ _ _ _ _ _} := ⟨fun _ _ _ H _ _ G => OFE.NonExpansive.ne (COFE.OFunctor.map_ne.ne H G)⟩
+  map_id {α β _ _} x := by
+    refine .trans ?_ (Completion.map_id _)
+    suffices H : Completion.map (COFE.OFunctor.map (OFE.Hom.id (α := α)) (OFE.Hom.id (α := β))) ≡ Completion.map (OFE.Hom.id (α := F α β)) by
+      exact H _
+    refine OFE.equiv_dist.mpr (fun n => ?_)
+    refine OFE.NonExpansive.ne ?_
+    intro x
+    exact (COFE.OFunctor.map_id (F := F) x).dist
+  map_comp {α β γ α' β' γ' _ _ _ _ _ _} f g f' g' x := by
+    refine .trans ?_ (Completion.map_comp _)
+    suffices H : (Completion.map (COFE.OFunctor.map (f.comp g) (g'.comp f')))
+      ≡ (Completion.map ((COFE.OFunctor.map g g').comp (COFE.OFunctor.map f f'))) by
+      exact H _
+    refine OFE.equiv_dist.mpr (fun n => ?_)
+    refine OFE.NonExpansive.ne (f := Completion.map) ?_
+    intro x
+    exact (COFE.OFunctor.map_comp (F := F) _ _ _ _ x).dist
+instance [COFE.OFunctorContractive F] : COFE.OFunctorContractive (CompletionOF F) where
+  map_contractive {_ _ _ _ _ _ _ _} := by
+    refine ⟨?_⟩
+    intro n f g H
+    simp only [Function.uncurry, CompletionOF, COFE.OFunctor.map]
+    refine OFE.NonExpansive.ne (f := Completion.map) ?_
+    exact COFE.OFunctorContractive.map_contractive.1 H
+
+end completion
+
 section powerset
 
 variable {α : Type u}
 
+-- high-level idea: use compact subspaces with hausdorff metric
+-- probably will end up as a completion of agree
 structure Powerset (α : Type u) [OFE α] [IsCOFE α] where
   pred : α → Prop
   nonempty : ∃ x, pred x
