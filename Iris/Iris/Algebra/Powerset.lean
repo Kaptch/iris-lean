@@ -65,6 +65,7 @@ theorem bind_assoc {α β γ : Type u} [OFE α] [OFE β] [OFE γ]
 -- derived functor
 abbrev map {α β : Type u} [OFE α] [OFE β] : (α -n> β) → (Completion α -n> Completion β) :=
   fun f => bind (unit.comp f)
+theorem map_def {α β : Type u} [OFE α] [OFE β] {f : α -n> β} {x : Completion α} : ((map f) x) ≡{n}≡ (Chain.map f x) := .rfl
 instance {α β : Type u} [OFE α] [OFE β] : OFE.NonExpansive (map (α := α) (β := β)) where
   ne {n x y} H := by
     simp only [map]
@@ -120,9 +121,11 @@ theorem universal_unique {α β : Type u} [OFE α] [OFE β] [IsCOFE β] {f : α 
   intro x; simp only [universal]
   refine OFE.equiv_dist.mpr (fun n => ?_)
   refine .trans ?_ IsCOFE.conv_compl.symm
-  simp only [map]
-
-  sorry
+  refine .trans ?_ map_def.symm
+  refine .trans ?_ (H _).symm.dist
+  simp only [unit, OFE.Hom.comp_apply]
+  refine OFE.NonExpansive.ne ?_
+  simp [OFE.Dist]
 
 end Completion
 
