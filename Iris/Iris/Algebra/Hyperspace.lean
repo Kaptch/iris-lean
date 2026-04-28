@@ -24,6 +24,13 @@ In this file we construct a (hyper)space of compact subspaces of a given X : UMe
 -- - Experiment with Vietoris spaces
 -- - Does completion commute with Agree? or with agree via finsets?
 
+-- Refs:
+-- - 10.4230/LIPIcs.CONCUR.2020.28
+-- - https://doi.org/10.1016/S0304-3975(96)00243-5
+-- - https://arxiv.org/abs/0806.3209
+-- - https://arxiv.org/abs/2509.00205
+-- - https://arxiv.org/abs/2505.06571
+
 namespace Iris
 
 def Completion (α : Type u) [OFE α] := Chain α
@@ -260,7 +267,7 @@ theorem mem_singleton [OFE α] (a b : α) : a ∈ ({b} : Hyperspace α) ↔ a �
       exact List.Mem.head _
     · exact h.dist
 
-theorem mem_union_left [OFE α] (a : α) (s t : Hyperspace α) :
+private theorem mem_union_left [OFE α] (a : α) (s t : Hyperspace α) :
     a ∈ s → a ∈ s ∪ t := by
   intro h n
   obtain ⟨b, hb, hab⟩ := h n
@@ -271,7 +278,7 @@ theorem mem_union_left [OFE α] (a : α) (s t : Hyperspace α) :
     left; exact hb
   · exact hab
 
-theorem mem_union_right [OFE α] (a : α) (s t : Hyperspace α) :
+private theorem mem_union_right [OFE α] (a : α) (s t : Hyperspace α) :
     a ∈ t → a ∈ s ∪ t := by
   intro h n
   obtain ⟨b, hb, hab⟩ := h n
@@ -282,7 +289,7 @@ theorem mem_union_right [OFE α] (a : α) (s t : Hyperspace α) :
     right; exact hb
   · exact hab
 
-theorem mem_union_iff [OFE α] (a : α) (s t : Hyperspace α) (n : Nat) :
+private theorem mem_union_iff [OFE α] (a : α) (s t : Hyperspace α) (n : Nat) :
     mem a (s ∪ t) n ↔ (∃ b ∈ (s.chain n).car, a ≡{n}≡ b) ∨ (∃ c ∈ (t.chain n).car, a ≡{n}≡ c) := by
   constructor
   · intro ⟨b, hb, hab⟩
@@ -306,6 +313,43 @@ theorem mem_union_iff [OFE α] (a : α) (s t : Hyperspace α) (n : Nat) :
       · simp only [Union.union, union, Agree.op, List.mem_append]
         right; exact hc
       · exact hac
+
+private theorem mem_anti [OFE α] {a : α} {s : Hyperspace α} {n : Nat} :
+    mem a s (n + 1) → mem a s n := by
+  rintro ⟨b, hb, hab⟩
+  have hab' : a ≡{n}≡ b := hab.lt (Nat.lt_succ_self n)
+  have hcauchy : Agree.dist n (s.chain (n + 1)) (s.chain n) :=
+    Agree.dist_def.mp (s.cauchy (Nat.le_succ n))
+  obtain ⟨c, hc, hbc⟩ := hcauchy.1 b hb
+  exact ⟨c, hc, hab'.trans hbc⟩
+
+private theorem mem_antitone [OFE α] {a : α} {s : Hyperspace α} {n m : Nat} (h : n ≤ m) :
+    mem a s m → mem a s n := by
+  induction h with
+  | refl => exact id
+  | step _ ih => exact fun hmem => ih (mem_anti hmem)
+
+theorem mem_union [OFE α] (a : α) (s t : Hyperspace α) : a ∈ (s ∪ t) ↔ a ∈ s ∨ a ∈ t := by
+  constructor
+  · intro h
+    by_cases hs : ∀ n, mem a s n
+    · exact Or.inl hs
+    · right
+      obtain ⟨N, hN⟩ := Classical.not_forall.mp hs
+      intro n
+      rcases Nat.lt_or_ge N n with hn | hn
+      · have hns : ¬mem a s n := fun hmem => hN (mem_antitone (Nat.le_of_lt hn) hmem)
+        rcases (mem_union_iff a s t n).mp (h n) with hs' | ht'
+        · exact absurd hs' hns
+        · exact ht'
+      · have htN : mem a t N := by
+          rcases (mem_union_iff a s t N).mp (h N) with hs' | ht'
+          · exact absurd hs' hN
+          · exact ht'
+        exact mem_antitone hn htN
+  · rintro (hs | ht)
+    · exact mem_union_left a s t hs
+    · exact mem_union_right a s t ht
 
 theorem singleton_union [OFE α] (a : α) (s : Hyperspace α) :
     {a} ∪ s ≡ union (singleton a) s := by rfl
