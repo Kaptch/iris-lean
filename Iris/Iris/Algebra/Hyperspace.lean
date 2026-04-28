@@ -22,6 +22,7 @@ In this file we construct a (hyper)space of compact subspaces of a given X : UMe
 -- - ?Leibniz? need to change Agree/provide an alternative for it
 -- - See if it's enough to model nondeterminism
 -- - Experiment with Vietoris spaces
+-- - Does completion commute with Agree? or with agree via finsets?
 
 namespace Iris
 
