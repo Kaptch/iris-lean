@@ -192,6 +192,8 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
 - [ ] `lib/mono_Z.v` (nb. generalize to `MonoNumbers.lean`)
 - [ ] `lib/mono_nat.v` (nb. generalize to `MonoNumbers.lean`)
 - [ ] `lib/na_invariants.v`
+  - [x] Basic construction 
+  - [ ] Proofmode classes
 - [ ] `lib/own.v`
   - Missing: `later_internal_eq_iRes_singleton`
   - [x] Definition
@@ -261,7 +263,7 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
 - [ ] `lib/atomic.v`
 - [ ] `lib/core.v`
 - [ ] `lib/counterexamples.v`
-- [ ] `lib/fixpoint_banach.v`
+- [x] `lib/fixpoint_banach.v`
 - [x] `lib/fixpoint_mono.v`
   - [x] Least fixpoints + induction 
   - [x] Greatest fixpoints + coinduction
