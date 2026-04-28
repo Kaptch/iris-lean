@@ -20,15 +20,15 @@ open BI CMRA Agree OFE UPred IProp Std ProofMode COFE Auth ExclAuth Excl Partial
 
 abbrev BoolO := LeibnizO Bool
 
-variable (GF : BundledGFunctors)
-
 abbrev BoxF : OFunctorPre :=
   ProdOF ((AuthURF (F := PNat) (OptionOF (ExclOF (constOF BoolO)))))
-    (OptionOF (AgreeRF (LaterOF (constOF (IProp GF)))))
+    (OptionOF (AgreeRF (LaterOF IdOF)))
+
+variable (GF : BundledGFunctors)
 
 @[rocq_alias boxG]
 class BoxG where
-  [elemG : ElemG GF (BoxF GF)]
+  [elemG : ElemG GF BoxF]
 
 attribute [reducible, instance] BoxG.elemG
 
@@ -39,11 +39,11 @@ abbrev SliceName := GName
 
 @[rocq_alias box_own_auth]
 def box_own_auth (γ : SliceName) (a : Auth PNat (Option (Excl BoolO))) : IProp GF :=
-  iOwn (F := BoxF GF) γ (a, none)
+  iOwn (F := BoxF) γ (a, none)
 
 @[rocq_alias box_own_prop]
 def box_own_prop (γ : SliceName) (P : IProp GF) : IProp GF :=
-  iOwn (F := BoxF GF) γ (UCMRA.unit, some (toAgree (Later.next P)))
+  iOwn (F := BoxF) γ (UCMRA.unit, some (toAgree (Later.next P)))
 
 instance box_own_prop_persistent (γ : SliceName) (P : IProp GF) :
     Persistent (box_own_prop γ P) := by
