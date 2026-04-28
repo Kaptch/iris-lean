@@ -30,7 +30,7 @@ theorem prod_validI [Sbi PROP] [CMRA A] [CMRA B] (x : A × B) :
 @[rocq_alias prod_includedI]
 theorem prod_includedI [Sbi PROP] [CMRA A] [CMRA B] (x y : A × B) :
     internalCmraIncluded x y ⊣⊢@{PROP} internalCmraIncluded x.1 y.1 ∧ internalCmraIncluded x.2 y.2 := by
-  simp only [internalCmraIncluded,  internalEq]
+  simp only [internalCmraIncluded, internalEq]
   refine .trans ?_ siPure_and
   refine siPure_mono_bi ?_
   refine siPure_exist.symm.trans ?_
@@ -42,15 +42,22 @@ theorem prod_includedI [Sbi PROP] [CMRA A] [CMRA B] (x y : A × B) :
   cases y with | mk y1 y2 =>
   simp only [CMRA.op, Prod.op]
   constructor
-  · intro n ⟨x, ⟨⟨⟨a, b⟩, H1⟩, H2⟩⟩
-    refine ⟨⟨x, ⟨⟨a, ?_⟩, H2⟩⟩, ⟨x, ⟨⟨b, ?_⟩, H2⟩⟩⟩
-    simp only [←H1]
-
-    sorry
-    simp only [←H1]
-
-    sorry
-  · sorry
+  · iintro ⟨%x, H⟩
+    isplit
+    · iexists x.fst
+      iapply (SiProp.internalEq_entails _ _ _ _).mpr $$ H
+      intro n ⟨H, _⟩
+      exact H
+    · iexists x.snd
+      iapply (SiProp.internalEq_entails _ _ _ _).mpr $$ H
+      intro n ⟨_, H⟩
+      exact H
+  · iintro ⟨⟨%x, H1⟩, ⟨%y, H2⟩⟩
+    iexists ⟨x, y⟩
+    simp only
+    intro n ⟨H1, ⟨_, H2⟩⟩
+    simp only [SiProp.internalEq] at H1 H2 ⊢
+    exact ⟨H1, H2⟩
 
 end prod
 
