@@ -13,6 +13,8 @@ public import Iris.Algebra.CMRA
 # Hyperspace Camera
 
 In this file we construct a (hyper)space of compact subspaces of a given X : UMet, show that it is complete, and provide CMRA for it.
+Note that CMRA instance has nothing to do with nondeterminism. It's a sanity check that hyperspace can be used instead of agreement, while also being a complete ultrametric space.
+As the intention is to use hyperspaces for domain equations, probably the CMRA instance should be (re)moved.
 -/
 
 @[expose] public section
@@ -607,6 +609,42 @@ instance {F} [COFE.OFunctorContractive F] : COFE.OFunctorContractive (Hyperspace
     simp only [Function.uncurry, HyperspaceOF, COFE.OFunctor.map]
     refine Hyperspace.map_ne _ _ ?_ x
     exact COFE.OFunctorContractive.map_contractive.1 h
+
+/-!
+A chain c can be embedded into the hyperspace by taking n-th approximation to be the singleton c n.
+The resulting element represents the approximate limit of c even when α itself is not complete,
+it lives in a COFE regardless of whether `α` is.
+-/
+namespace Hyperspace
+
+variable {α : Type u} [OFE α]
+
+def ofChain (c : Completion α) : Hyperspace α where
+  chain n := toAgree (c.chain n)
+  cauchy h := toAgree.ne.ne (c.cauchy h)
+
+theorem mem_ofChain (c : Completion α) (a : α) :
+    a ∈ ofChain c ↔ ∀ n, a ≡{n}≡ c.chain n := by
+  constructor
+  · intro h n
+    obtain ⟨b, hb, hab⟩ := h n
+    simp only [ofChain, toAgree, List.mem_singleton] at hb
+    exact hb ▸ hab
+  · intro h n
+    exact ⟨c.chain n, by simp [ofChain, toAgree], h n⟩
+
+instance ofChain_ne : OFE.NonExpansive (ofChain (α := α)) where
+  ne {_ _ _} h := toAgree.ne.ne h
+
+theorem map_ofChain {β : Type u} [OFE β] (f : α -n> β) (c : Completion α) :
+    Hyperspace.map f (ofChain c) ≡ ofChain (Chain.map f c) :=
+  fun _ => .rfl
+
+theorem ofChain_singleton [IsCOFE α] (c : Completion α) :
+    ofChain c ≡ singleton (IsCOFE.compl c) :=
+  fun _ => toAgree.ne.ne IsCOFE.conv_compl.symm
+
+end Hyperspace
 
 end Iris
 
