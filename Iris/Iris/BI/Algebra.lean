@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 module
 
 public import Iris.ProofMode
+public import Iris.Algebra.Lib.ExclAuth
 /-! ## Algebra wrappers for BI
 This file provides introduction rules (BI entailments) for (some) CMRA operations and properties.
 -/
@@ -60,6 +61,20 @@ theorem prod_includedI [Sbi PROP] [CMRA A] [CMRA B] (x y : A × B) :
     exact ⟨H1, H2⟩
 
 end prod
+
+section option
+
+open BI Std BIBase.BiEntails
+
+@[rocq_alias option_validI]
+theorem option_validI [Sbi PROP] [CMRA A] (mx : Option A) :
+    internalCmraValid mx ⊣⊢@{PROP} (mx.elim iprop(True) internalCmraValid) := by
+  simp only [internalCmraValid]
+  cases mx with
+  | some x => exact siPure_mono_bi .rfl
+  | none => exact ⟨true_intro, true_siPure⟩
+
+end option
 
 section heap_view
 
@@ -311,4 +326,18 @@ theorem auth_both_validI (a b : A) :
   · exact exists_elim fun c n ⟨hi, hvn⟩ => ⟨DFrac.valid_own_one, ⟨⟨c, hi⟩, hvn⟩⟩
 
 end auth
+
+section excl_auth
+
+open Iris BI ExclAuth
+
+variable [Sbi PROP] [OFE A]
+
+@[rocq_alias excl_auth_agreeI]
+theorem excl_auth_agreeI (a b : A) : internalCmraValid ((●E a) • ◯E b) ⊢@{PROP} (internalEq a b) :=
+  siPure_mono (fun _ H => agreeN H)
+
+end excl_auth
+
+
 end Iris

@@ -9,6 +9,7 @@ public import Iris.Algebra.Auth
 public import Iris.Algebra.Excl
 meta import Iris.Std.RocqPorting
 
+@[expose] public section
 /-!
 # Exclusive Authoritative CMRA
 

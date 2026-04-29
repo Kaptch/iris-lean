@@ -169,6 +169,8 @@ class Discrete (α : Type _) [OFE α] where
   discrete_0 {x y : α} : x ≡{0}≡ y → x ≡ y
 export OFE.Discrete (discrete_0)
 
+instance {α : Type _} [OFE α] [Discrete α] {x : α} : DiscreteE x := ⟨fun H => discrete_0 H⟩
+
 /-- For discrete OFEs, `n`-equivalence implies equivalence for any `n`. -/
 theorem Discrete.discrete [OFE α] [Discrete α] {n} {x y : α} (h : x ≡{n}≡ y) : x ≡ y :=
   discrete_0 (h.le (Nat.zero_le _))

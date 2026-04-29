@@ -11,6 +11,7 @@ public import Iris.Instances.IProp
 public import Iris.Instances.Lib.Invariants
 public import Iris.Std.PartialMap
 public import Iris.Std.Namespaces
+public import Iris.Std.Equivalence
 
 @[expose] public section
 
@@ -18,10 +19,11 @@ namespace Iris
 
 open BI CMRA Agree OFE UPred IProp Std ProofMode COFE Auth ExclAuth Excl PartialMap
 
-abbrev BoolO := LeibnizO Bool
+local instance : OFE Bool := OFE.ofDiscrete Eq equivalence_eq
+local instance : Discrete Bool := ⟨fun H => H⟩
 
 abbrev BoxF : OFunctorPre :=
-  ProdOF ((AuthURF (F := PNat) (OptionOF (ExclOF (constOF BoolO)))))
+  ProdOF ((AuthURF (F := PNat) (OptionOF (ExclOF (constOF Bool)))))
     (OptionOF (AgreeRF (LaterOF IdOF)))
 
 variable (GF : BundledGFunctors)
@@ -38,7 +40,7 @@ variable {GF : BundledGFunctors} [InvGS_gen hlc GF] [BoxG GF]
 abbrev SliceName := GName
 
 @[rocq_alias box_own_auth]
-def box_own_auth (γ : SliceName) (a : Auth PNat (Option (Excl BoolO))) : IProp GF :=
+def box_own_auth (γ : SliceName) (a : Auth PNat (Option (Excl Bool))) : IProp GF :=
   iOwn (F := BoxF) γ (a, none)
 
 @[rocq_alias box_own_prop]
@@ -72,7 +74,7 @@ instance box_own_prop_contractive (γ : SliceName) : Contractive (box_own_prop (
 
 @[rocq_alias slice_inv]
 def slice_inv (γ : SliceName) (P : IProp GF) : IProp GF :=
-  iprop(∃ b : Bool, box_own_auth γ (●E (⟨b⟩ : BoolO)) ∗ if b then P else True)
+  iprop(∃ b : Bool, box_own_auth γ (●E b) ∗ if b then P else True)
 
 @[rocq_alias slice]
 def slice (N : Namespace) (γ : SliceName) (P : IProp GF) : IProp GF :=
@@ -83,7 +85,7 @@ def box {M : Type _ → Type _} [LawfulFiniteMap M SliceName]
     (N : Namespace) (f : M Bool) (P : IProp GF) : IProp GF :=
   iprop(∃ Φ : SliceName → IProp GF,
     ▷ internalEq P ([∗map] γ ↦ _x ∈ f, Φ γ) ∗
-    [∗map] γ ↦ b ∈ f, box_own_auth γ (◯E (⟨b⟩ : BoolO)) ∗ box_own_prop γ (Φ γ) ∗
+    [∗map] γ ↦ b ∈ f, box_own_auth γ (◯E b) ∗ box_own_prop γ (Φ γ) ∗
                        inv N (slice_inv γ (Φ γ)))
 
 @[rocq_alias box_inv_ne]
@@ -140,37 +142,46 @@ instance box_ne {M : Type _ → Type _} [LawfulFiniteMap M SliceName]
 
 @[rocq_alias box_own_auth_agree]
 theorem box_own_auth_agree (γ : SliceName) (b1 b2 : Bool) :
-    box_own_auth (GF := GF) γ (●E (⟨b1⟩ : BoolO)) ∗ box_own_auth γ (◯E ⟨b2⟩) ⊢ ⌜b1 = b2⌝ := by
+    box_own_auth (GF := GF) γ (●E b1) ∗ box_own_auth γ (◯E b2) ⊢ ⌜b1 = b2⌝ := by
   simp only [box_own_auth]
   iintro ⟨H1, H2⟩
   ihave H := iOwn_cmraValid_op $$ [H1 H2]; (isplitl [H1] <;> iassumption)
-  -- simp only [CMRA.op, Prod.op]
-  -- icases internalCmraValid_discrete $$ H with %H
-  sorry
+  ihave ⟨H, _⟩ := prod_validI $$ H
+  ihave H := excl_auth_agreeI $$ H
+  iapply discrete_eq $$ H
 
 @[rocq_alias box_own_auth_update]
 theorem box_own_auth_update (γ : SliceName) (b1 b2 b3 : Bool) :
-    box_own_auth (GF := GF) γ (●E (⟨b1⟩ : BoolO)) ∗ box_own_auth γ (◯E ⟨b2⟩) ⊢
-    |==> box_own_auth γ (●E ⟨b3⟩) ∗ box_own_auth γ (◯E ⟨b3⟩) := by
+    box_own_auth (GF := GF) γ (●E b1) ∗ box_own_auth γ (◯E b2) ⊢
+    |==> (box_own_auth γ (●E b3) ∗ box_own_auth γ (◯E b3)) := by
   simp only [box_own_auth]
-
-  sorry
+  iintro H
+  ihave H := iOwn_op $$ H
+  iapply (BIUpdate.mono iOwn_op.mp)
+  iapply iOwn_update ?_ $$ H
+  exact Update.prod _ ExclAuth.update Update.id
 
 @[rocq_alias box_own_agree]
 theorem box_own_agree (γ : SliceName) (Q1 Q2 : IProp GF) :
     box_own_prop γ Q1 ∗ box_own_prop γ Q2 ⊢ ▷ internalEq Q1 Q2 := by
-
-  sorry
+  simp only [box_own_prop]
+  iintro ⟨H1, H2⟩
+  ihave H := iOwn_cmraValid_op $$ [H1 H2]; (isplitl [H1] <;> iassumption)
+  ihave ⟨_, H⟩ := prod_validI $$ H
+  ihave H := option_validI $$ H
+  simp only [Option.elim, CMRA.op, optionOp]
+  ihave H := agree_op_invI $$ H
+  ihave H := (agree_equivI _ _).mp $$ H
+  iapply later_equivI_mp $$ H
 
 @[rocq_alias box_alloc]
 theorem box_alloc {M : Type _ → Type _} [LawfulFiniteMap M SliceName] (N : Namespace) :
-    ⊢ box (GF := GF) N (∅ : M Bool) iprop(True) := by
+    ⊢ box (GF := GF) N (∅ : M Bool) iprop(emp) := by
   simp only [box]
-  iexists (fun _ => iprop(True))
+  iexists (fun _ => iprop(emp))
   isplit
   · inext; simp
-
-    sorry
+    iapply internalEq.refl (P := iprop(emp)); simp
   · simp
 
 @[rocq_alias slice_insert_empty]
