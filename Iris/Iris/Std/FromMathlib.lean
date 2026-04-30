@@ -116,7 +116,7 @@ def reverseRec {motive : List α → Sort _} (nil : motive [])
 
 end List
 
-namespace BitwiseNat
+namespace Nat
 
 /-- NB. Copied from Mathlib -/
 def ldiff : Nat → Nat → Nat :=
@@ -153,11 +153,11 @@ theorem shiftLeft'_false : ∀ n, shiftLeft' false m n = m <<< n
 /-- NB. Copied from Mathlib -/
 @[simp] theorem shiftRight_eq (m n : Nat) : Nat.shiftRight m n = m >>> n := rfl
 
-end BitwiseNat
+end Nat
 
-namespace BitwiseInt
+namespace Int
 
-open Int BitwiseNat
+open Nat _root_.Int
 
 /-- NB. Copied from Mathlib
 `lor` takes two integers and returns their bitwise `or` -/
@@ -194,7 +194,7 @@ instance : HXor Int Int Int := ⟨xor⟩
 is obtained by left-shifting the binary representation of `m` by `n` places -/
 instance : ShiftLeft Int where
   shiftLeft
-  | (m : Nat), (n : Nat) => shiftLeft' false m n
+  | (m : Nat), (n : Nat) => Nat.shiftLeft' false m n
   | (m : Nat), -[n+1] => m >>> (Nat.succ n)
   | -[m+1], (n : Nat) => -[shiftLeft' true m n+1]
   | -[m+1], -[n+1] => -[m >>> (Nat.succ n)+1]
@@ -209,6 +209,6 @@ instance : ShiftRight Int where
 
 instance : HShiftRight Int Int Int := ⟨ShiftRight.shiftRight⟩
 
-end BitwiseInt
+end Int
 
 end FromMathlib
