@@ -2,6 +2,12 @@ module
 
 public import Mathlib.Topology.EMetricSpace.Basic
 public import Mathlib.Topology.MetricSpace.Ultra.Basic
+public import Mathlib.Topology.MetricSpace.Lipschitz
+public import Mathlib.CategoryTheory.Category.Basic
+public import Mathlib.CategoryTheory.ConcreteCategory.Basic
+public import Mathlib.CategoryTheory.ConcreteCategory.Bundled
+public import Mathlib.CategoryTheory.Functor.Basic
+public import Mathlib.CategoryTheory.Equivalence
 public import Iris
 
 @[expose] public section
@@ -125,43 +131,288 @@ open Classical in
 instance {X : Type _} [OFE X] : IsUltrametricDist X where
   dist_triangle_max x y z := ofe_dist_triangle_max x y z
 
-@[reducible]
-def IsUltrametricDist.OFE {X : Type _} [PseudoMetricSpace X] [IsUltrametricDist X] : OFE X where
+instance IsUltrametricDist.OFE {X : Type _} [PseudoMetricSpace X]
+    [IsUltrametricDist X] : OFE X where
   Equiv x y := dist x y = 0
   Dist n x y := dist x y ≤ 1 / (2 ^ n)
-  dist_eqv {n} := by
-    constructor
-    · simp
-    · simp [dist_comm]
-    · intro x y z H G
-      trans
-      · exact dist_triangle_max x y z
-      · simp only [sup_le_iff]
-        exact ⟨H, G⟩
+  dist_eqv {n} := ⟨by simp, by simp [dist_comm], fun {x y z} H G =>
+    (dist_triangle_max x y z).trans (max_le H G)⟩
   equiv_dist := by
-    intro x y
-    norm_num
+    refine ⟨fun heq n => by simp [heq], fun H => ?_⟩
+    by_contra HC
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one (dist_nonneg.lt_of_ne' HC)
+      (by norm_num : (1/2 : ℝ) < 1)
+    linarith [H n, show (1/2 : ℝ) ^ n = 1 / 2 ^ n by simp [div_eq_inv_mul, mul_comm]]
+  dist_lt {n x y m} H hlt := H.trans (one_div_pow2_antitone hlt.le)
+
+
+section Nonexpansive
+
+variable {X Y : Type _}
+
+theorem NonExpansive.lipschitzWith [OFE X] [OFE Y] (f : X → Y) [NonExpansive f] :
+    LipschitzWith 1 f := by
+  apply LipschitzWith.of_dist_le_mul
+  intro x y
+  change ofe_dist (f x) (f y) ≤ 1 * ofe_dist x y
+  simp only [one_mul]
+  simp only [ofe_dist]
+  by_cases hxy : x ≡ y
+  · have : f x ≡ f y := NonExpansive.eqv hxy
+    simp [if_pos this, if_pos hxy]
+  · by_cases hfxy : f x ≡ f y
+    · simp [if_pos hfxy, if_neg hxy]
+    · simp only [if_neg hxy, if_neg hfxy]
+      apply one_div_le_one_div_of_le (by positivity)
+      suffices h : sSup {n | x ≡{n}≡ y} ≤ sSup {n | f x ≡{n}≡ f y} by
+        have : (2 : ℕ) ^ sSup {n | x ≡{n}≡ y} ≤ 2 ^ sSup {n | f x ≡{n}≡ f y} :=
+          Nat.pow_le_pow_right (by norm_num) h
+        exact_mod_cast this
+      by_cases h_ne : {n | x ≡{n}≡ y}.Nonempty
+      · apply csSup_le h_ne
+        intro n hn
+        apply le_csSup (stepSet_bddAbove hfxy)
+        exact NonExpansive.ne hn
+      · simp [Set.not_nonempty_iff_eq_empty.mp h_ne, csSup_empty]
+
+instance LipschitzWith.toNonExpansive [PseudoMetricSpace X] [IsUltrametricDist X]
+    [PseudoMetricSpace Y] [IsUltrametricDist Y] (f : X → Y)
+    (hf : LipschitzWith 1 f) : NonExpansive f where
+  ne {n x₁ x₂} (h : dist x₁ x₂ ≤ 1 / 2 ^ n) :=
+    calc dist (f x₁) (f x₂)
+        ≤ 1 * dist x₁ x₂ := hf.dist_le_mul x₁ x₂
+      _ = dist x₁ x₂ := by ring
+      _ ≤ 1 / 2 ^ n := h
+
+end Nonexpansive
+
+section Roundtrip
+
+variable {X : Type _} [OFE X]
+
+-- proper ofe's should have x ≡{0}≡ y for all x, y
+theorem ofe_roundtrip_dist (n : ℕ) (x y : X) (H : x ≡{0}≡ y) :
+    @OFE.Dist _ IsUltrametricDist.OFE n x y ↔ x ≡{n}≡ y := by
+  change ofe_dist x y ≤ 1 / 2 ^ n ↔ x ≡{n}≡ y
+  constructor
+  · intro h
+    simp only [ofe_dist] at h
+    split_ifs at h with g
+    · exact g.dist
+    · by_cases hnempty : (stepSet x y).Nonempty
+      · have hmem := stepSet_sSup_mem g hnempty
+        have hs : n ≤ sSup (stepSet x y) := by
+          by_contra hlt
+          push Not at hlt
+          have : (2 : ℝ) ^ sSup (stepSet x y) < 2 ^ n := by
+            exact_mod_cast Nat.pow_lt_pow_right (by norm_num) hlt
+          have : (1 : ℝ) / 2 ^ n < 1 / 2 ^ sSup (stepSet x y) :=
+            one_div_lt_one_div_of_lt (by positivity) this
+          linarith
+        exact stepSet_down hs hmem
+      · exfalso
+        exact hnempty ⟨0, H⟩
+  · intro h
+    simp only [ofe_dist]
+    split_ifs with heq
+    · have : (0 : ℝ) < 1 / 2 ^ n := by positivity
+      linarith
+    · have hs : n ≤ sSup {n | x ≡{n}≡ y} := le_csSup (stepSet_bddAbove heq) h
+      have : (2 : ℝ) ^ n ≤ 2 ^ sSup {n | x ≡{n}≡ y} := by
+        exact_mod_cast Nat.pow_le_pow_right (by positivity) hs
+      exact one_div_le_one_div_of_le (by positivity) this
+
+theorem ofe_roundtrip_equiv (x y : X) :
+    @OFE.Equiv _ IsUltrametricDist.OFE x y ↔ x ≡ y := by
+  change ofe_dist x y = 0 ↔ x ≡ y
+  constructor
+  · intro h
+    simp only [ofe_dist] at h
+    split_ifs at h with heq
+    · exact heq
+    · exfalso
+      have : (0 : ℝ) < 1 / 2 ^ sSup (stepSet x y) := by positivity
+      linarith
+  · intro h
+    simp only [ofe_dist, if_pos h]
+
+end Roundtrip
+
+section MetricRoundtrip
+
+variable {X : Type _} [PseudoMetricSpace X] [IsUltrametricDist X]
+
+theorem metric_roundtrip_ofe_dist (x y : X) (hd : dist x y ≤ 1) (n : ℕ) :
+    @ofe_dist _ IsUltrametricDist.OFE x y ≤ 1/2^n ↔ dist x y ≤ 1/2^n := by
+  simp only [ofe_dist]
+  split_ifs with heq
+  · change dist x y = 0 at heq
+    constructor <;> intro
+    · have : (0 : ℝ) ≤ 1 / 2 ^ n := by positivity
+      linarith
+    · have : (0 : ℝ) ≤ 1 / 2 ^ n := by positivity
+      linarith
+  · change dist x y ≠ 0 at heq
+    let S := {k : ℕ | dist x y ≤ 1 / 2 ^ k}
+    have hS_eq : {k : ℕ | @OFE.Dist _ IsUltrametricDist.OFE k x y} = S := by rfl
     constructor
-    · rintro heq n; rw [heq]
-      positivity
-    · intro H
-      by_contra HC
+    · intro h
+      rw [hS_eq] at h
+      have hn_le : n ≤ sSup S := by
+        by_contra hlt
+        push Not at hlt
+        have : (2 : ℝ) ^ sSup S < 2 ^ n := by
+          exact_mod_cast Nat.pow_lt_pow_right (by norm_num) hlt
+        have : (1 : ℝ) / 2 ^ n < 1 / 2 ^ sSup S :=
+          one_div_lt_one_div_of_lt (by positivity) this
+        linarith
+      have hS_nonempty : S.Nonempty := ⟨0, by
+        simp only [S, Set.mem_setOf_eq, pow_zero, div_one]; exact hd⟩
+      have hS_finite : S.Finite := by
+        have hdist_pos : 0 < dist x y := dist_nonneg.lt_of_ne' heq
+        obtain ⟨K, hK⟩ := exists_pow_lt_of_lt_one hdist_pos (by norm_num : (1/2 : ℝ) < 1)
+        apply Set.Finite.subset (Finset.finite_toSet (Finset.range (K + 1)))
+        intro k hk
+        simp only [Finset.coe_range, Set.mem_Iio, S] at hk ⊢
+        by_contra hge
+        push Not at hge
+        have : (2 : ℝ) ^ K < 2 ^ k := by
+          exact_mod_cast Nat.pow_lt_pow_right (by norm_num) (by omega : K < k)
+        have : (1 : ℝ) / 2 ^ k < 1 / 2 ^ K :=
+          one_div_lt_one_div_of_lt (by positivity) this
+        have : dist x y < dist x y :=
+          calc dist x y
+              ≤ 1 / 2 ^ k := hk
+            _ < 1 / 2 ^ K := this
+            _ = (1/2) ^ K := by simp [div_eq_inv_mul, mul_comm]
+            _ < dist x y := hK
+        linarith
+      have hmem_sup : sSup S ∈ S := hS_nonempty.csSup_mem hS_finite
+      have : (2 : ℝ) ^ n ≤ 2 ^ sSup S := by
+        exact_mod_cast Nat.pow_le_pow_right (by norm_num) hn_le
+      calc dist x y
+          ≤ 1 / 2 ^ sSup S := hmem_sup
+        _ ≤ 1 / 2 ^ n := one_div_le_one_div_of_le (by positivity) this
+    · intro h
+      rw [hS_eq]
+      have hn_mem : n ∈ S := h
+      have hS_bdd : BddAbove S := by
+        have hdist_pos : 0 < dist x y := dist_nonneg.lt_of_ne' heq
+        obtain ⟨K, hK⟩ := exists_pow_lt_of_lt_one hdist_pos (by norm_num : (1/2 : ℝ) < 1)
+        use K
+        intro k (hk : dist x y ≤ 1 / 2 ^ k)
+        by_contra hlt
+        have h1 : (2 : ℝ) ^ K < 2 ^ k := by
+          exact_mod_cast Nat.pow_lt_pow_right (by norm_num) (by omega : K < k)
+        have h2 : (1 : ℝ) / 2 ^ k < 1 / 2 ^ K :=
+          one_div_lt_one_div_of_lt (by positivity) h1
+        have : dist x y < dist x y :=
+          calc dist x y
+              ≤ 1 / 2 ^ k := hk
+            _ < 1 / 2 ^ K := h2
+            _ = (1/2) ^ K := by simp [div_eq_inv_mul, mul_comm]
+            _ < dist x y := hK
+        linarith
+      have hn_le : n ≤ sSup S := le_csSup hS_bdd hn_mem
+      have : (2 : ℝ) ^ n ≤ 2 ^ sSup S := by
+        exact_mod_cast Nat.pow_le_pow_right (by norm_num) hn_le
+      exact one_div_le_one_div_of_le (by positivity) this
 
-      -- have ⟨ε, G⟩ : ∃ ε, ε < dist x y := by
-      --   by_contra GC
-      --   simp only [not_exists, not_lt] at GC
-      --   specialize GC 0
+end MetricRoundtrip
 
-      --   sorry
+section Categories
 
-      sorry
-  dist_lt {n x y m} H hlt := by
-    trans
-    · exact H
-    · trans
-      · exact one_div_pow2_antitone hlt
-      · exact one_div_pow2_antitone (by omega : m ≤ m + 1)
+open CategoryTheory
 
--- TODO: transport
+class ProperOFE (X : Type*) extends OFE X where
+  zero_dist : ∀ (x y : X), x ≡{0}≡ y
+
+def OFECat := Bundled ProperOFE
+
+namespace OFECat
+
+instance : CoeSort OFECat Type* := Bundled.coeSort
+
+instance (X : OFECat) : ProperOFE X := X.str
+
+instance (X : OFECat) : OFE X := X.str.toOFE
+
+def of (X : Type*) [ProperOFE X] : OFECat := Bundled.of X
+
+def NonExpansiveHom (X Y : OFECat) := { f : X → Y // NonExpansive f }
+
+instance : Category OFECat where
+  Hom X Y := NonExpansiveHom X Y
+  id X := ⟨id, @id_ne _ (X.str.toOFE)⟩
+  comp f g := ⟨g.val ∘ f.val, NonExpansive.comp g.property f.property⟩
+
+end OFECat
+
+structure UMetCat where
+  carrier : Type*
+  metric : PseudoMetricSpace carrier
+  ultra : IsUltrametricDist carrier
+  bounded : ∀ (x y : carrier), @dist carrier metric.toDist x y ≤ 1
+
+namespace UMetCat
+
+instance : CoeSort UMetCat Type* := ⟨UMetCat.carrier⟩
+
+instance (X : UMetCat) : PseudoMetricSpace X := X.metric
+
+instance (X : UMetCat) : IsUltrametricDist X := X.ultra
+
+def of (X : Type*) [inst1 : PseudoMetricSpace X] [inst2 : IsUltrametricDist X]
+    (h : ∀ x y : X, dist x y ≤ 1) : UMetCat :=
+  ⟨X, inst1, inst2, h⟩
+
+def LipschitzOneHom (X Y : UMetCat) := { f : X → Y // LipschitzWith 1 f }
+
+instance : Category UMetCat where
+  Hom X Y := LipschitzOneHom X Y
+  id X := by
+    refine ⟨id, ?_⟩
+    letI := X.metric
+    exact LipschitzWith.id
+  comp f g := by
+    refine ⟨g.val ∘ f.val, ?_⟩
+    convert g.property.comp f.property using 2
+    norm_num
+
+end UMetCat
+
+def ofeToUMet : OFECat ⥤ UMetCat where
+  obj X := by
+    letI : ProperOFE X := X.str
+    letI : OFE X := X.str.toOFE
+    exact UMetCat.of X (fun x y => ofe_dist_le_one x y)
+  map {X Y} f := by
+    letI : ProperOFE X := X.str
+    letI : ProperOFE Y := Y.str
+    letI : OFE X := X.str.toOFE
+    letI : OFE Y := Y.str.toOFE
+    exact ⟨f.val, @NonExpansive.lipschitzWith X Y X.str.toOFE Y.str.toOFE f.val f.property⟩
+
+def umetToOFE : UMetCat ⥤ OFECat where
+  obj X := by
+    letI : PseudoMetricSpace X := X.metric
+    letI : IsUltrametricDist X := X.ultra
+    letI : ProperOFE X := {
+      toOFE := IsUltrametricDist.OFE
+      zero_dist := fun x y => by
+        change dist x y ≤ 1 / 2 ^ 0
+        simp only [pow_zero, div_one]
+        exact X.bounded x y
+    }
+    exact OFECat.of X
+  map {X Y} f := by
+    letI : PseudoMetricSpace X := X.metric
+    letI : IsUltrametricDist X := X.ultra
+    letI : PseudoMetricSpace Y := Y.metric
+    letI : IsUltrametricDist Y := Y.ultra
+    refine ⟨f.val, ?_⟩
+    exact LipschitzWith.toNonExpansive f.val f.property
+
+end Categories
 
 end UMetCompat
