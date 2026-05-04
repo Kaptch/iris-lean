@@ -8,6 +8,7 @@ public import Mathlib.CategoryTheory.ConcreteCategory.Basic
 public import Mathlib.CategoryTheory.ConcreteCategory.Bundled
 public import Mathlib.CategoryTheory.Functor.Basic
 public import Mathlib.CategoryTheory.Equivalence
+public import Mathlib.CategoryTheory.EqToHom
 public import Iris
 
 @[expose] public section
@@ -51,6 +52,11 @@ lemma ofe_dist_nonneg (x y : X) : 0 ≤ ofe_dist x y := by
   simp only [ofe_dist]; split_ifs with h
   · norm_num
   · positivity
+
+lemma ofe_dist_bisected (x y : X) : ofe_dist x y = 0 ∨ ∃ n : ℕ, ofe_dist x y = 1 / 2 ^ n := by
+  simp only [ofe_dist]; split_ifs with h
+  · exact Or.inl rfl
+  · exact Or.inr ⟨sSup (stepSet x y), rfl⟩
 
 lemma ofe_dist_le_one (x y : X) : ofe_dist x y ≤ 1 := by
   simp only [ofe_dist]; split_ifs with h
@@ -110,7 +116,7 @@ lemma ofe_dist_triangle_max (x y z : X) :
             (div_le_one_of_le₀ (by exact_mod_cast Nat.one_le_two_pow) (by norm_num))
 
 open Classical in
-instance {X : Type _} [OFE X] : PseudoMetricSpace X where
+instance ofe_to_pseudometric {X : Type _} [OFE X] : PseudoMetricSpace X where
   dist := ofe_dist
   dist_self x := by simp [ofe_dist, Equiv.rfl]
   dist_comm x y := by
@@ -320,39 +326,234 @@ theorem metric_roundtrip_ofe_dist (x y : X) (hd : dist x y ≤ 1) (n : ℕ) :
 
 end MetricRoundtrip
 
+section OFETopology
+
+variable {X : Type _} [OFE X]
+
+lemma ofe_dist_le_of_rel {n : ℕ} {x y : X} (h : x ≡{n}≡ y) :
+    ofe_dist x y ≤ 1 / 2 ^ n := by
+  simp only [ofe_dist]
+  split_ifs with heq
+  · positivity
+  · have hle : n ≤ sSup (stepSet x y) := le_csSup (stepSet_bddAbove heq) h
+    have hpow : (2 : ℕ) ^ n ≤ 2 ^ sSup (stepSet x y) :=
+      Nat.pow_le_pow_right (by norm_num) hle
+    exact one_div_le_one_div_of_le (by positivity) (by exact_mod_cast hpow)
+
+lemma ofe_rel_of_dist_lt {n : ℕ} {x y : X} (h : ofe_dist x y < 1 / 2 ^ (n + 1)) :
+    x ≡{n}≡ y := by
+  simp only [ofe_dist] at h
+  split_ifs at h with heq
+  · exact OFE.Equiv.dist heq
+  · have hS : (stepSet x y).Nonempty := by
+      by_contra hemp
+      simp [Set.not_nonempty_iff_eq_empty.mp hemp, csSup_empty] at h
+      have hle := one_div_pow2_antitone (Nat.zero_le (n + 1))
+      norm_num at hle
+      linarith
+    have hgt : n + 2 ≤ sSup (stepSet x y) := by
+      by_contra habs
+      push Not at habs
+      have hle : sSup (stepSet x y) ≤ n + 1 := by omega
+      have hle' := one_div_pow2_antitone hle
+      linarith
+    exact stepSet_down (by omega) (stepSet_sSup_mem heq hS)
+
+theorem isOpen_iff_ofe {s : Set X} :
+    IsOpen s ↔ ∀ x ∈ s, ∃ n : ℕ, ∀ y, x ≡{n}≡ y → y ∈ s := by
+  rw [Metric.isOpen_iff]
+  constructor
+  · intro h x hx
+    obtain ⟨ε, hε, hball⟩ := h x hx
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
+    refine ⟨n, fun y hy => hball (Metric.mem_ball.mpr ?_)⟩
+    rw [dist_comm]
+    calc ofe_dist x y ≤ 1 / 2 ^ n := ofe_dist_le_of_rel hy
+      _ = (1 / 2) ^ n := by rw [div_pow, one_pow]
+      _ < ε := hn
+  · intro h x hx
+    obtain ⟨n, hn⟩ := h x hx
+    refine ⟨1 / 2 ^ (n + 1), by positivity, fun y hy => hn y (ofe_rel_of_dist_lt ?_)⟩
+    have := Metric.mem_ball.mp hy
+    rwa [dist_comm] at this
+
+theorem isClosed_iff_ofe {s : Set X} :
+    IsClosed s ↔ ∀ x : X, (∀ n : ℕ, ∃ y ∈ s, x ≡{n}≡ y) → x ∈ s := by
+  rw [← isOpen_compl_iff, isOpen_iff_ofe]
+  constructor
+  · intro h x hx
+    by_contra hmem
+    obtain ⟨n, hn⟩ := h x hmem
+    obtain ⟨y, hys, hyn⟩ := hx n
+    exact hn y hyn hys
+  · intro h x hmem
+    by_contra habs
+    apply hmem
+    apply h x
+    intro n
+    simp only [not_exists, not_forall, Set.mem_compl_iff, not_not] at habs
+    obtain ⟨y, hyn, hys⟩ := habs n
+    exact ⟨y, hys, hyn⟩
+
+def FinApprox (X : Type _) [OFE X] : Prop :=
+  ∀ n : ℕ, ∃ S : Finset X, ∀ x : X, ∃ s ∈ S, x ≡{n}≡ s
+
+theorem chain_isCauchySeq (c : Chain X) : CauchySeq c.chain := by
+  apply Metric.cauchySeq_iff.mpr
+  intro ε hε
+  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
+  refine ⟨n, fun i hi j hj => ?_⟩
+  calc dist (c.chain i) (c.chain j)
+      ≤ max (dist (c.chain i) (c.chain n)) (dist (c.chain n) (c.chain j)) :=
+        IsUltrametricDist.dist_triangle_max _ _ _
+    _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) := by
+        apply max_le_max
+        · exact ofe_dist_le_of_rel (c.cauchy hi)
+        · rw [dist_comm]; exact ofe_dist_le_of_rel (c.cauchy hj)
+    _ = (1 / 2) ^ n := by simp [max_self]
+    _ < ε := hn
+
+theorem totallyBounded_iff_finApprox :
+    TotallyBounded (Set.univ : Set X) ↔ FinApprox X := by
+  rw [Metric.totallyBounded_iff]
+  constructor
+  · intro h n
+    obtain ⟨t, htfin, ht⟩ := h (1 / 2 ^ (n + 1)) (by positivity)
+    refine ⟨htfin.toFinset, fun x => ?_⟩
+    have hx := ht (Set.mem_univ x)
+    simp only [Set.mem_iUnion₂, Metric.mem_ball] at hx
+    obtain ⟨s, hs, hd⟩ := hx
+    exact ⟨s, htfin.mem_toFinset.mpr hs, ofe_rel_of_dist_lt hd⟩
+  · intro h ε hε
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
+    obtain ⟨S, hS⟩ := h n
+    refine ⟨↑S, S.finite_toSet, fun x _ => ?_⟩
+    simp only [Set.mem_iUnion₂, Metric.mem_ball]
+    obtain ⟨s, hs, hrel⟩ := hS x
+    exact ⟨s, Finset.mem_coe.mpr hs, lt_of_le_of_lt (ofe_dist_le_of_rel hrel)
+      (by rwa [div_pow, one_pow] at hn)⟩
+
+theorem completeSpace_iff_isCOFE (h0 : ∀ x y : X, x ≡{0}≡ y) :
+    CompleteSpace X ↔ Nonempty (IsCOFE X) := by
+  constructor
+  · intro _
+    have hlim : ∀ c : Chain X, ∃ x : X, Filter.Tendsto c.chain Filter.atTop (nhds x) :=
+      fun c => cauchySeq_tendsto_of_complete (chain_isCauchySeq c)
+    exact ⟨{
+      compl := fun c => Classical.choose (hlim c)
+      conv_compl := fun {n} {c} => by
+        set x := Classical.choose (hlim c)
+        have hconv := Classical.choose_spec (hlim c)
+        rw [Metric.tendsto_atTop] at hconv
+        have hle : dist x (c.chain n) ≤ 1 / 2 ^ n := by
+          obtain ⟨K, hK⟩ := hconv (1 / 2 ^ n) (by positivity)
+          have h1 : dist x (c.chain (max K n)) ≤ 1 / 2 ^ n := by
+            rw [dist_comm]; exact (hK (max K n) (le_max_left K n)).le
+          have h2 : dist (c.chain (max K n)) (c.chain n) ≤ 1 / 2 ^ n :=
+            ofe_dist_le_of_rel (c.cauchy (le_max_right K n))
+          calc dist x (c.chain n)
+              ≤ max (dist x (c.chain (max K n))) (dist (c.chain (max K n)) (c.chain n)) :=
+                IsUltrametricDist.dist_triangle_max _ _ _
+            _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) := max_le_max h1 h2
+            _ = 1 / 2 ^ n := max_self _
+        exact (ofe_roundtrip_dist n x (c.chain n) (h0 x (c.chain n))).mp hle
+    }⟩
+  · rintro ⟨hCOFE⟩
+    apply Metric.complete_of_cauchySeq_tendsto
+    intro u hu
+    rw [Metric.cauchySeq_iff] at hu
+    have hN : ∀ m, ∃ N, ∀ i ≥ N, ∀ j ≥ N, dist (u i) (u j) < 1 / 2 ^ (m + 1) :=
+      fun m => hu (1 / 2 ^ (m + 1)) (by positivity)
+    let N' : ℕ → ℕ := fun m =>
+      Nat.rec (Classical.choose (hN 0))
+        (fun k acc => max (acc + 1) (Classical.choose (hN (k + 1)))) m
+    have hN'_ge : ∀ m, Classical.choose (hN m) ≤ N' m := by
+      intro m
+      cases m with
+      | zero => exact le_refl _
+      | succ k => exact le_max_right _ _
+    have hN'_lt_succ : ∀ m, N' m < N' (m + 1) := by
+      intro m
+      change N' m < max (N' m + 1) (Classical.choose (hN (m + 1)))
+      exact Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (le_max_left _ _)
+    have hN'_mono : StrictMono N' := strictMono_nat_of_lt_succ hN'_lt_succ
+    have hN'_spec : ∀ m i, N' m ≤ i → ∀ j, N' m ≤ j → dist (u i) (u j) < 1 / 2 ^ (m + 1) :=
+      fun m i hi j hj =>
+        Classical.choose_spec (hN m) i ((hN'_ge m).trans hi) j ((hN'_ge m).trans hj)
+    let c : Chain X := {
+      chain := fun m => u (N' m)
+      cauchy := fun {n m} hnm =>
+        ofe_rel_of_dist_lt (hN'_spec n (N' m) (hN'_mono.monotone hnm) (N' n) (le_refl _))
+    }
+    refine ⟨@IsCOFE.compl X _ hCOFE c, ?_⟩
+    rw [Metric.tendsto_atTop]
+    intro ε hε
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
+    refine ⟨N' n, fun k hk => ?_⟩
+    set x := @IsCOFE.compl X _ hCOFE c
+    have hck : dist (u k) (u (N' n)) < 1 / 2 ^ (n + 1) :=
+      hN'_spec n k hk (N' n) (le_refl _)
+    have hcx : dist (u (N' n)) x ≤ 1 / 2 ^ n := by
+      rw [dist_comm]; exact ofe_dist_le_of_rel (@IsCOFE.conv_compl X _ hCOFE n c)
+    calc dist (u k) x
+        ≤ max (dist (u k) (u (N' n))) (dist (u (N' n)) x) :=
+          IsUltrametricDist.dist_triangle_max _ _ _
+      _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) :=
+          max_le_max (hck.le.trans (one_div_pow2_antitone (Nat.le_succ n))) hcx
+      _ = (1 / 2) ^ n := by simp [max_self]
+      _ < ε := hn
+
+theorem compactSpace_iff_isCOFE_finApprox (h0 : ∀ x y : X, x ≡{0}≡ y) :
+    CompactSpace X ↔ Nonempty (IsCOFE X) ∧ FinApprox X := by
+  rw [← completeSpace_iff_isCOFE h0, ← totallyBounded_iff_finApprox]
+  constructor
+  · intro hC
+    exact ⟨(completeSpace_iff_isComplete_univ.mpr isCompact_univ.isComplete),
+           isCompact_univ.totallyBounded⟩
+  · rintro ⟨hCS, hTB⟩
+    haveI : CompleteSpace X := hCS
+    exact ⟨hTB.isCompact_of_isClosed isClosed_univ⟩
+
+end OFETopology
+
 section Categories
 
 open CategoryTheory
 
-class ProperOFE (X : Type*) extends OFE X where
-  zero_dist : ∀ (x y : X), x ≡{0}≡ y
-
-def OFECat := Bundled ProperOFE
+@[ext]
+structure OFECat where
+  carrier : Type*
+  ofe : OFE carrier
+  zero_dist : ∀ (x y : carrier), x ≡{0}≡ y
 
 namespace OFECat
 
-instance : CoeSort OFECat Type* := Bundled.coeSort
+instance : CoeSort OFECat Type* := ⟨OFECat.carrier⟩
 
-instance (X : OFECat) : ProperOFE X := X.str
+instance {X : OFECat} : OFE X := X.ofe
 
-instance (X : OFECat) : OFE X := X.str.toOFE
-
-def of (X : Type*) [ProperOFE X] : OFECat := Bundled.of X
+instance (X : OFECat) : ∀ (x y : X), x ≡{0}≡ y := X.zero_dist
 
 def NonExpansiveHom (X Y : OFECat) := { f : X → Y // NonExpansive f }
 
 instance : Category OFECat where
   Hom X Y := NonExpansiveHom X Y
-  id X := ⟨id, @id_ne _ (X.str.toOFE)⟩
+  id X := ⟨id, @id_ne _ (X.ofe)⟩
   comp f g := ⟨g.val ∘ f.val, NonExpansive.comp g.property f.property⟩
+
+def of (X : Type*) [inst1 : OFE X] (proper : ∀ (x y : X), x ≡{0}≡ y) : OFECat :=
+  ⟨X, inst1, proper⟩
 
 end OFECat
 
+@[ext]
 structure UMetCat where
   carrier : Type*
   metric : PseudoMetricSpace carrier
   ultra : IsUltrametricDist carrier
   bounded : ∀ (x y : carrier), @dist carrier metric.toDist x y ≤ 1
+  bisected : ∀ (x y : carrier), @dist carrier metric.toDist x y = 0
+    ∨ ∃ n : ℕ, @dist carrier metric.toDist x y = 1 / 2 ^ n
 
 namespace UMetCat
 
@@ -363,8 +564,9 @@ instance (X : UMetCat) : PseudoMetricSpace X := X.metric
 instance (X : UMetCat) : IsUltrametricDist X := X.ultra
 
 def of (X : Type*) [inst1 : PseudoMetricSpace X] [inst2 : IsUltrametricDist X]
-    (h : ∀ x y : X, dist x y ≤ 1) : UMetCat :=
-  ⟨X, inst1, inst2, h⟩
+    (h : ∀ x y : X, dist x y ≤ 1) (g : ∀ x y : X, dist x y = 0 ∨ ∃ n, dist x y = 1 / 2 ^ n)
+    : UMetCat :=
+  ⟨X, inst1, inst2, h, g⟩
 
 def LipschitzOneHom (X Y : UMetCat) := { f : X → Y // LipschitzWith 1 f }
 
@@ -383,28 +585,22 @@ end UMetCat
 
 def ofeToUMet : OFECat ⥤ UMetCat where
   obj X := by
-    letI : ProperOFE X := X.str
-    letI : OFE X := X.str.toOFE
-    exact UMetCat.of X (fun x y => ofe_dist_le_one x y)
+    letI : OFE X := X.ofe
+    exact UMetCat.of X (fun x y => ofe_dist_le_one x y) (fun x y => ofe_dist_bisected x y)
   map {X Y} f := by
-    letI : ProperOFE X := X.str
-    letI : ProperOFE Y := Y.str
-    letI : OFE X := X.str.toOFE
-    letI : OFE Y := Y.str.toOFE
-    exact ⟨f.val, @NonExpansive.lipschitzWith X Y X.str.toOFE Y.str.toOFE f.val f.property⟩
+    letI : OFE X := X.ofe
+    letI : OFE Y := Y.ofe
+    exact ⟨f.val, @NonExpansive.lipschitzWith X Y X.ofe Y.ofe f.val f.property⟩
 
 def umetToOFE : UMetCat ⥤ OFECat where
   obj X := by
     letI : PseudoMetricSpace X := X.metric
     letI : IsUltrametricDist X := X.ultra
-    letI : ProperOFE X := {
-      toOFE := IsUltrametricDist.OFE
-      zero_dist := fun x y => by
+    letI : ∀ (x y : X), x ≡{0}≡ y := fun x y => by
         change dist x y ≤ 1 / 2 ^ 0
         simp only [pow_zero, div_one]
         exact X.bounded x y
-    }
-    exact OFECat.of X
+    exact OFECat.of X this
   map {X Y} f := by
     letI : PseudoMetricSpace X := X.metric
     letI : IsUltrametricDist X := X.ultra
@@ -412,6 +608,94 @@ def umetToOFE : UMetCat ⥤ OFECat where
     letI : IsUltrametricDist Y := Y.ultra
     refine ⟨f.val, ?_⟩
     exact LipschitzWith.toNonExpansive f.val f.property
+
+@[simp] private theorem ofeCat_eqToHom_val {X Y : OFECat} (h : X = Y) (x : X) :
+    (eqToHom h : X ⟶ Y).val x = h ▸ x := by cases h; rfl
+
+@[simp] private theorem umetCat_eqToHom_val {X Y : UMetCat} (h : X = Y) (x : X) :
+    (eqToHom h : X ⟶ Y).val x = h ▸ x := by cases h; rfl
+
+theorem OFE.ext {X} {A B : OFE X} : (∀ n x y, A.Dist n x y ↔ B.Dist n x y) → A = B := by
+  intro H
+  cases A with | mk EA DA _ GA _; cases B with | mk EB DB _ GB _
+  have heq1 : DA = DB := by
+    ext
+    apply H
+  cases heq1
+  have heq2 : EA = EB := by
+    ext
+    rw [GA, GB]
+  cases heq2
+  rfl
+
+theorem ofeToUMetToOFE (X : OFECat) : umetToOFE.obj (ofeToUMet.obj X) = X := by
+  ext
+  · rfl
+  · refine heq_iff_eq.mpr ?_
+    simp only [ofeToUMet, UMetCat.of, umetToOFE, OFECat.of]
+    refine OFE.ext ?_
+    intro n x y
+    refine ofe_roundtrip_dist _ _ _ ?_
+    exact X.zero_dist _ _
+
+theorem umetToOFEtoUMet (X : UMetCat) : ofeToUMet.obj (umetToOFE.obj X) = X := by
+  ext
+  · rfl
+  · refine heq_iff_eq.mpr ?_
+    simp only [ofeToUMet, UMetCat.of, ofe_to_pseudometric, umetToOFE, OFECat.of]
+    ext x y
+    letI : PseudoMetricSpace X := X.metric
+    letI : IsUltrametricDist X := X.ultra
+    change @ofe_dist _ IsUltrametricDist.OFE x y = dist x y
+    rcases X.bisected x y with h0 | ⟨n, hn⟩
+    · have hequiv : @OFE.Equiv _ IsUltrametricDist.OFE x y := h0
+      simp [ofe_dist, if_pos hequiv, h0]
+    · have hne : ¬ @OFE.Equiv _ IsUltrametricDist.OFE x y := by
+        change ¬ dist x y = 0
+        rw [hn]; positivity
+      simp only [ofe_dist, if_neg hne]
+      have hset : {k : ℕ | @OFE.Dist _ IsUltrametricDist.OFE k x y} = Set.Iic n := by
+        ext k
+        change dist x y ≤ 1 / 2 ^ k ↔ k ≤ n
+        rw [hn]
+        constructor
+        · intro hk
+          by_contra hlt
+          push Not at hlt
+          have h1 : (2 : ℝ) ^ n < 2 ^ k :=
+            by exact_mod_cast Nat.pow_lt_pow_right (by norm_num) hlt
+          have h2 : (1 : ℝ) / 2 ^ k < 1 / 2 ^ n :=
+            one_div_lt_one_div_of_lt (by positivity) h1
+          linarith
+        · intro hk
+          exact one_div_pow2_antitone hk
+      rw [hset]
+      have hsup : sSup (Set.Iic n : Set ℕ) = n := by
+        apply le_antisymm
+        · exact csSup_le ⟨n, le_refl n⟩ (fun k hk => hk)
+        · exact le_csSup ⟨n, fun k hk => hk⟩ (le_refl n)
+      rw [hsup, hn]
+
+theorem ofeToUMet_umetToOFE_eq : ofeToUMet ⋙ umetToOFE = 𝟭 OFECat :=
+  Functor.hext (fun X => ofeToUMetToOFE X) fun X Y f => by
+    simp only [Functor.comp_obj, Functor.id_obj, Functor.comp_map, Functor.id_map]
+    rw [← conj_eqToHom_iff_heq _ _ (ofeToUMetToOFE X) (ofeToUMetToOFE Y)]
+    sorry
+
+theorem umetToOFE_ofeToUMet_eq : umetToOFE ⋙ ofeToUMet = 𝟭 UMetCat :=
+  Functor.hext (fun X => umetToOFEtoUMet X) fun X Y f => by
+    simp only [Functor.comp_obj, Functor.id_obj, Functor.comp_map, Functor.id_map]
+    rw [← conj_eqToHom_iff_heq _ _ (umetToOFEtoUMet X) (umetToOFEtoUMet Y)]
+    sorry
+
+def ofeUMetEquiv : OFECat ≌ UMetCat where
+  functor := ofeToUMet
+  inverse := umetToOFE
+  unitIso := eqToIso ofeToUMet_umetToOFE_eq.symm
+  counitIso := eqToIso umetToOFE_ofeToUMet_eq
+  functor_unitIso_comp X := by
+    simp only [eqToIso.hom, eqToHom_app]
+    sorry
 
 end Categories
 
