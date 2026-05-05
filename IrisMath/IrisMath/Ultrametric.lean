@@ -398,6 +398,9 @@ theorem isClosed_iff_ofe {s : Set X} :
 def FinApprox (s : Set X) : Prop :=
   ∀ n : ℕ, ∃ S : Finset X, ∀ x ∈ s, ∃ y ∈ S, x ≡{n}≡ y
 
+def ChainClosed (s : Set X) : Prop :=
+  ∀ c : Chain X, (∀ n, c.chain n ∈ s) → ∃ x ∈ s, ∀ n, x ≡{n}≡ c.chain n
+
 theorem totallyBounded_iff_FinApprox (s : Set X) :
     TotallyBounded s ↔ FinApprox s := by
   rw [Metric.totallyBounded_iff]
@@ -514,7 +517,7 @@ theorem compactSpace_iff_isCOFE_finApprox (h0 : ∀ x y : X, x ≡{0}≡ y) :
     exact ⟨hTB.isCompact_of_isClosed isClosed_univ⟩
 
 theorem isComplete_iff_chain (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
-    IsComplete s ↔ ∀ c : Chain X, (∀ n, c.chain n ∈ s) → ∃ x ∈ s, ∀ n, x ≡{n}≡ c.chain n := by
+    IsComplete s ↔ ChainClosed s := by
   constructor
   · intro hcomp c hcs
     obtain ⟨x, hxs, hconv⟩ := cauchySeq_tendsto_of_isComplete hcomp hcs (chain_isCauchySeq c)
@@ -576,8 +579,7 @@ theorem isComplete_iff_chain (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
       _ < ε := hn
 
 theorem isCompact_iff_FinApprox (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
-    IsCompact s ↔ (∀ c : Chain X, (∀ n, c.chain n ∈ s) → ∃ x ∈ s, ∀ n, x ≡{n}≡ c.chain n)
-      ∧ FinApprox s := by
+    IsCompact s ↔ ChainClosed s ∧ FinApprox s := by
   rw [← totallyBounded_iff_FinApprox]
   rw [← isComplete_iff_chain s h0]
   exact ⟨fun h => ⟨h.isComplete, h.totallyBounded⟩,
