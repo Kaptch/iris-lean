@@ -646,6 +646,111 @@ theorem ofChain_singleton [IsCOFE α] (c : Completion α) :
 
 end Hyperspace
 
+namespace Hyperspace
+
+variable {α : Type u} [OFE α]
+
+def agree_compl (x : Agree (Completion α)) : Completion (Agree α) where
+  chain n := ⟨x.car.map (fun c => c.chain n), by simp [x.not_nil]⟩
+  cauchy {n i} hni := by
+    constructor
+    · intro a ha
+      simp only [List.mem_map] at ha
+      obtain ⟨c, hc, rfl⟩ := ha
+      exact ⟨c.chain n, by simp only [List.mem_map]; exact ⟨c, hc, rfl⟩, c.cauchy hni⟩
+    · intro b hb
+      simp only [List.mem_map] at hb
+      obtain ⟨c, hc, rfl⟩ := hb
+      exact ⟨c.chain i, by simp only [List.mem_map]; exact ⟨c, hc, rfl⟩, c.cauchy hni⟩
+
+instance agree_compl_ne : OFE.NonExpansive (agree_compl (α := α)) where
+  ne {n x₁ x₂} h := by
+    constructor
+    · intro a ha
+      simp only [agree_compl, List.mem_map] at ha
+      obtain ⟨c₁, hc₁, rfl⟩ := ha
+      obtain ⟨c₂, hc₂, hd⟩ := h.1 c₁ hc₁
+      exact ⟨c₂.chain n, by simp only [agree_compl, List.mem_map]; exact ⟨c₂, hc₂, rfl⟩, hd⟩
+    · intro b hb
+      simp only [agree_compl, List.mem_map] at hb
+      obtain ⟨c₂, hc₂, rfl⟩ := hb
+      obtain ⟨c₁, hc₁, hd⟩ := h.2 c₂ hc₂
+      exact ⟨c₁.chain n, by simp only [agree_compl, List.mem_map]; exact ⟨c₁, hc₁, rfl⟩, hd⟩
+
+theorem agree_compl_preserves_valid {x : Agree (Completion α)}
+    (hval : Agree.valid x) :
+    ∀ n, Agree.validN n ((agree_compl x).chain n) := by
+  intro n
+  rw [Agree.validN_iff]
+  intro a ha b hb
+  simp only [agree_compl, List.mem_map] at ha hb
+  obtain ⟨c₁, hc₁, rfl⟩ := ha
+  obtain ⟨c₂, hc₂, rfl⟩ := hb
+  exact Agree.validN_iff.mp (hval n) c₁ hc₁ c₂ hc₂
+
+theorem agree_compl_reflects_valid {x : Agree (Completion α)}
+    (hval : ∀ n, Agree.validN n ((agree_compl x).chain n)) :
+    Agree.valid x := by
+  intro n
+  rw [Agree.validN_iff]
+  intro c₁ hc₁ c₂ hc₂
+  have := Agree.validN_iff.mp (hval n)
+  exact this (c₁.chain n) (by simp only [agree_compl, List.mem_map]; exact ⟨c₁, hc₁, rfl⟩)
+             (c₂.chain n) (by simp only [agree_compl, List.mem_map]; exact ⟨c₂, hc₂, rfl⟩)
+
+def completionToCompletionAgree (c : Completion α) : Completion (Agree α) :=
+  Chain.map ⟨toAgree, toAgree.ne⟩ c
+
+instance completionToCompletionAgree_ne :
+    OFE.NonExpansive (completionToCompletionAgree (α := α)) where
+  ne {n c₁ c₂} h := by
+    show Agree.dist n (Chain.map ⟨toAgree, toAgree.ne⟩ c₁ n)
+                       (Chain.map ⟨toAgree, toAgree.ne⟩ c₂ n)
+    simp only [Chain.map_apply]
+    exact toAgree.ne.ne h
+
+theorem completionToCompletionAgree_valid (c : Completion α) :
+    ∀ n, Agree.validN n ((completionToCompletionAgree c).chain n) := by
+  intro n
+  simp only [completionToCompletionAgree, Chain.map_apply]
+  exact trivial
+
+noncomputable def completionAgreeToCompletion (c : Completion (Agree α))
+    (hval : ∀ n, Agree.validN n (c.chain n)) : Completion α where
+  chain n := (c.chain n).car.head (c.chain n).not_nil
+  cauchy {n i} hni := by
+    have hcauchy : Agree.dist n (c.chain i) (c.chain n) := c.cauchy hni
+    have hi_head := List.head_mem (c.chain i).not_nil
+    obtain ⟨b, hb, hdb⟩ := hcauchy.1 _ hi_head
+    have hval_n := Agree.validN_iff.mp (hval n)
+    exact hdb.trans (hval_n _ hb _ (List.head_mem _))
+
+theorem roundtrip_left (c : Completion α) :
+    completionAgreeToCompletion (completionToCompletionAgree c)
+      (completionToCompletionAgree_valid c) ≡ c := by
+        exact .rfl
+
+theorem roundtrip_right (c : Completion (Agree α))
+    (hval : ∀ n, Agree.validN n (c.chain n)) :
+    completionToCompletionAgree (completionAgreeToCompletion c hval) ≡ c := by
+      refine' fun n => _;
+      constructor;
+      · intro a ha
+        simp [completionToCompletionAgree, completionAgreeToCompletion] at ha;
+        simp_all [ toAgree ];
+        exact ⟨ _, List.head_mem _, by rfl ⟩;
+      · intro b hb
+        exact ⟨(c.chain n).car.head (c.chain n).not_nil,
+          by simp [completionToCompletionAgree, completionAgreeToCompletion, Chain.map_apply, toAgree],
+          (Agree.validN_iff.mp (hval n) b hb _ (List.head_mem _)).symm⟩
+
+theorem comm (c : Completion α) :
+    completionToCompletionAgree c ≡ agree_compl (toAgree c) := by
+      unfold completionToCompletionAgree agree_compl;
+      unfold toAgree; simp [Chain.map]
+
+end Hyperspace
+
 end Iris
 
 end
