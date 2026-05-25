@@ -6,13 +6,8 @@ public import Iris.HeapLang.Notation
 public import Iris.HeapLang.Instances
 public import Iris.ProgramLogic.WeakestPre
 public import Iris.ProgramLogic.Lifting
-public import Iris.Instances.Lib.FUpd
-public import Iris.Instances.Lib.WSat
 public import Iris.Algebra.HeapView
 public import Iris.Algebra.Auth
-public import Iris.Algebra.Agree
-public import Iris.Algebra.Excl
-public import Iris.Algebra.Numbers
 public import Iris.ProofMode
 public import Std.Data.ExtTreeMap
 
@@ -20,22 +15,6 @@ public import Std.Data.ExtTreeMap
 namespace Iris.HeapLang
 
 open Iris Auth ProgramLogic Language.Notation Std HeapView
--- open _root_.Std (Associative Commutative LeftIdentity LawfulLeftIdentity)
-
-abbrev Steps := Nat
-
--- scoped instance : Associative (Add.add (α := Steps)) := ⟨Nat.add_assoc⟩
--- scoped instance : Commutative (Add.add (α := Steps)) := ⟨Nat.add_comm⟩
--- scoped instance : LeftIdentity (Add.add (α := Steps)) (0 : Steps) where
--- scoped instance : LawfulLeftIdentity (Add.add (α := Steps)) (0 : Steps) := ⟨Nat.zero_add⟩
--- scoped instance : LeftCancelAdd Steps := ⟨Nat.add_left_cancel⟩
-
--- scoped instance : COFE Steps := COFE.ofDiscrete _ Eq_Equivalence
--- scoped instance : OFE.Discrete Steps := ⟨congrArg id⟩
--- scoped instance : OFE.Leibniz Steps := ⟨congrArg id⟩
--- scoped instance : UCMRA Steps := CommMonoidLike.instUCMRA
--- scoped instance : CMRA.Discrete Steps := CommMonoidLike.instDiscrete
--- scoped instance {a : Steps} : CMRA.Cancelable a := inferInstance
 
 instance : OFE Val := OFE.ofDiscrete _ Eq_Equivalence
 
@@ -50,26 +29,13 @@ abbrev GenHeapF : COFE.OFunctorPre :=
   HeapViewURF (F := PNat) (H := fun V => Std.ExtTreeMap Loc V compare)
   (constOF (DFrac PNat × Excl Val))
 
-abbrev ProphMapF : COFE.OFunctorPre :=
-  HeapViewURF (F := PNat) (H := fun V => Std.ExtTreeMap ProphId V compare)
-  (constOF (DFrac PNat × Excl (Val × Val)))
-
-abbrev StepCounterF : COFE.OFunctorPre :=
-  AuthURF (F := PNat) (constOF Steps)
-
 class HeapLangGpreS (hlc : outParam Bool) (GF : BundledGFunctors) extends IrisGS_gen hlc Exp GF where
   heap : ElemG GF GenHeapF
-  proph : ElemG GF ProphMapF
-  steps : ElemG GF StepCounterF
 
 attribute [reducible, instance] HeapLangGpreS.heap
-attribute [reducible, instance] HeapLangGpreS.proph
-attribute [reducible, instance] HeapLangGpreS.steps
 
 class HeapLangGS (hlc : outParam Bool) (GF : BundledGFunctors) extends HeapLangGpreS hlc GF where
   heap_name : GName
-  proph_name : GName
-  steps_name : GName
 
 end HeapLangGS
 
@@ -81,91 +47,10 @@ def pointsto (l : Loc) (dq : DFrac PNat) (v : Val) : IProp GF :=
   iOwn (E := H.heap) H.heap_name
     (HeapView.Frag (K := Loc) (V := (DFrac PNat × Excl Val)) l dq (dq, Excl.excl v))
 
-def steps_auth (n : Nat) : IProp GF :=
-  iOwn (E := H.steps) H.steps_name (Auth.auth (DFrac.own 1) n)
-
-def steps_lb (n : Nat) : IProp GF :=
-  iOwn (E := H.steps) H.steps_name (Auth.frag n)
-
 end Predicates
 
 notation:20 l " ↦{" dq "} " v => (pointsto (hlc := _) l dq v)
 notation:20 l " ↦ " v => (pointsto (hlc := _) l (DFrac.own 1) v)
-
-section StepCounter
-
-variable {GF : BundledGFunctors} {hlc : Bool} [HeapLangGS hlc GF]
-
-theorem steps_lb_0 : ⊢ |==> steps_lb (hlc := hlc) (GF := GF) 0 := by
-  unfold steps_lb
-  exact iOwn_unit (ε := UCMRA.unit)
-
-theorem steps_lb_valid (n m : Nat) :
-  steps_auth (hlc := hlc) (GF := GF) n -∗
-  steps_lb (hlc := hlc) (GF := GF) m -∗
-  ⌜m ≤ n⌝ := by
-  unfold steps_auth steps_lb
-  iintro Hauth Hfrag
-  icombine Hauth Hfrag as Hval
-  icases iOwn_cmraValid $$ Hval with Hval
-  icases auth_both_validI $$ Hval with ⟨%Hval, -⟩
-  ipure_intro
-  obtain ⟨k, ⟨⟩⟩ := Hval
-  simp [CMRA.op, Add.add]
-
-theorem steps_lb_get (n : Nat) :
-  steps_auth (hlc := hlc) (GF := GF) n -∗
-  steps_lb (hlc := hlc) (GF := GF) n := by
-  unfold steps_auth steps_lb
-  iintro Hauth
-  sorry
-
-theorem steps_lb_le (n n' : Nat) (h : n' ≤ n) :
-  steps_lb (hlc := hlc) (GF := GF) n -∗
-  steps_lb (hlc := hlc) (GF := GF) n' := by
-  unfold steps_lb
-  iintro Hfrag
-  iapply iOwn_mono $$ Hfrag
-  apply Auth.frag_inc_of_inc
-  refine ⟨n - n', .of_eq ?_⟩
-  exact (Nat.add_sub_of_le h).symm
-
-end StepCounter
-
-section PointsTo
-
-variable {GF : BundledGFunctors} {hlc : Bool} [H : HeapLangGS hlc GF]
-
-theorem pointsto_valid (l : Loc) (dq : DFrac PNat) (v : Val) :
-  (l ↦{dq} v) ⊢ (⌜✓ dq⌝ : IProp GF) := by
-  unfold pointsto
-  iintro Hpt
-  icases iOwn_cmraValid $$ Hpt with Hval
-  icases internalCmraValid_elim $$ Hval with %Hval
-  ipure_intro
-  exact (HeapView.frag_validN_iff.mp Hval).left
-
-theorem pointsto_conflict_frac (l : Loc) (dq1 dq2 : DFrac PNat) (v1 v2 : Val) :
-  (l ↦{dq1} v1) ∗ (l ↦{dq2} v2) ⊢ (False : IProp GF) := by
-  unfold pointsto
-  iintro ⟨Hpt1, Hpt2⟩
-  icombine Hpt1 Hpt2 as Hres
-  icases iOwn_cmraValid $$ Hres with Hval
-  icases frag_op_frag_validI $$ Hval with ⟨%Hval, Hval⟩
-  icases internalCmraValid_elim $$ Hval with %Hval'
-  exact Hval'.right.elim
-
-theorem pointsto_conflict (l : Loc) (v1 v2 : Val) :
-  (l ↦ v1) ∗ (l ↦ v2) ⊢ (False : IProp GF) := by
-  unfold pointsto
-  iintro ⟨Hpt1, Hpt2⟩
-  icombine Hpt1 Hpt2 as Hres
-  icases iOwn_cmraValid $$ Hres with Hval
-  icases frag_op_frag_validI $$ Hval with ⟨%Hval, Hval⟩
-  icases internalCmraValid_elim $$ Hval with %Hval'
-  exact Hval'.right.elim
-
-end PointsTo
 
 section Lifting
 
