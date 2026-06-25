@@ -35,8 +35,7 @@ attribute [reducible, instance] NaInvG.inv
 abbrev NaInvPoolName := GName
 
 instance instNaInvF_discreteE {α β : Type _} (x : DisjointLeibnizSet α) (y : DisjointLeibnizSet β) :
-    DiscreteE (x, y) :=
-  prod.is_discrete (inst_disjointLeibnizSet_DiscreteE _) (inst_disjointLeibnizSet_DiscreteE _)
+    DiscreteE (x, y) := by infer_instance
 
 instance coreId_valid_empty_empty : CoreId ((valid (∅ : CoPset), valid (∅ : PosSet))) where
   core_id := by rfl
@@ -183,7 +182,7 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
     iassumption
   icases (own_union disjoint_diff_right).mp $$ [HtokN] with ⟨Htoki, HtokNdi⟩
   · rw [← HNminusi]; iassumption
-  imod inv_acc _ _ _ HNE $$ Hinv with ⟨Hcontent, Hclose⟩
+  imod inv_acc HNE $$ Hinv with ⟨Hcontent, Hclose⟩
   icases Hcontent with (⟨HP, >Hdis⟩ | >Htoki2)
   · ihave Hreturn : ▷ (P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [Htoki]
     · inext; iright; iassumption
@@ -192,7 +191,7 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
     isplitl [HP]; iassumption
     isplitl [HtokRest]; iassumption
     iintro ⟨HPret, HtokFret⟩
-    imod inv_acc _ _ _ HNE $$ Hinv with ⟨Hcontent2, Hclose2⟩
+    imod inv_acc HNE $$ Hinv with ⟨Hcontent2, Hclose2⟩
     icases Hcontent2 with (⟨_HPconflict, >Hdis2⟩ | >Htoki_back)
     · iexfalso
       ihave Hk := iOwn_op (E := W.inv) $$ [Hdis Hdis2]
