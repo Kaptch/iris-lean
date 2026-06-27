@@ -121,6 +121,9 @@ theorem GenMap.empty_discreteE [OFE β] : DiscreteE (GenMap.empty (β := β)) wh
   obtain ⟨cb, bb⟩ := b
   simp at h; subst h; rfl
 
+instance instLeibniz_GenMap [OFE β] [Leibniz β] : Leibniz (GenMap β) where
+  eq_of_eqv h := GenMap.ext (eq_of_eqv h)
+
 /-! ## CMRA -/
 
 section CMRA

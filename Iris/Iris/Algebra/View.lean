@@ -85,6 +85,16 @@ instance : OFE (View R) where
      fun H => ⟨equiv_dist.mpr (H · |>.1), equiv_dist.mpr (H · |>.2)⟩⟩
   dist_lt H Hn := ⟨dist_lt H.1 Hn, dist_lt H.2 Hn⟩
 
+/-- The auth component is always `Leibniz` (`DFrac` and `Agree A` are), so a `View` is `Leibniz`
+whenever its fragment type is. -/
+instance instLeibniz [Leibniz B] : Leibniz (View R) where
+  eq_of_eqv {x y} h := by
+    obtain ⟨ha, hb⟩ := h
+    have h1 := eq_of_eqv ha
+    have h2 := eq_of_eqv hb
+    show (⟨x.auth, x.frag⟩ : View R) = ⟨y.auth, y.frag⟩
+    rw [h1, h2]
+
 #rocq_ignore viewO "Use the plain View type and typeclass inference"
 
 @[rocq_alias View_ne]
