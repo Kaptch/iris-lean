@@ -62,9 +62,7 @@ instance instHDivQpQpQp : HDiv Qp Qp Qp where
 def Qp.divide_even (q : Qp) (n : Nat) (hn : 0 < n) : Qp :=
   ⟨q.val / n, Rat.div_pos q.2 (by exact_mod_cast hn)⟩
 
-instance instCOFEQp : COFE Qp := COFE.ofDiscrete _ Eq_Equivalence
-
-instance instLeibnizQp : OFE.Leibniz Qp := ⟨id⟩
+instance instCOFEQp : COFE Qp := COFE.ofDiscrete _ Eq_Equivalence id
 
 instance instCMRAQp : CMRA Qp where
   pcore _ := none
@@ -105,7 +103,7 @@ instance instCMRAQp : CMRA Qp where
 @[simp, grind =] theorem Qp.lt_iff {x y : Qp} : x < y ↔ x.val < y.val := Iff.rfl
 @[simp] theorem Qp.ext_iff {x y : Qp} : x = y ↔ x.val = y.val := Subtype.ext_iff
 @[simp] theorem Qp.dist_iff {n} {x y : Qp} : x ≡{n}≡ y ↔ x.val = y.val := Subtype.ext_iff
-@[simp] theorem Qp.equiv_iff {x y : Qp} : x ≡ y ↔ x.val = y.val := Subtype.ext_iff
+@[simp] theorem Qp.equiv_iff {x y : Qp} : x = y ↔ x.val = y.val := Subtype.ext_iff
 @[simp, rocq_alias frac_valid_1] theorem Qp.valid_one : ✓ (1 : Qp) := by grind
 @[simp, grind =] theorem Qp.half_add_half (q : Qp) : q.half + q.half = q := Subtype.ext (by grind)
 
@@ -157,7 +155,7 @@ set_option synthInstance.checkSynthOrder false in
 @[rocq_alias frac_is_op]
 instance (priority := default - 10) (q1 q2 : Qp) :
     IsOpMerge (q1 + q2 : Qp) q1 q2 where
-  is_op := .rfl
+  is_op := rfl
 
 set_option synthInstance.checkSynthOrder false in
 @[rocq_alias is_op_frac]

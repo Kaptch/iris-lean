@@ -107,7 +107,7 @@ theorem embed_mono {P Q : PROP1} (h : P ⊢ Q) : (⎡P⎤ : PROP2) ⊢ ⎡Q⎤ :
 theorem embed_congr {P Q : PROP1} (h : P ⊣⊢ Q) : (⎡P⎤ : PROP2) ⊣⊢ ⎡Q⎤ :=
   ⟨embed_mono h.mp, embed_mono h.mpr⟩
 
-#rocq_ignore embed_proper "iris-lean has no setoid `Proper` instances; `embed_congr` is the `≡`-respecting lemma."
+#rocq_ignore embed_proper "iris-lean has no setoid `Proper` instances; `embed_congr` is the `=`-respecting lemma."
 #rocq_ignore embed_flip_mono "iris-lean has no setoid `Proper` instances; covered by `embed_mono`."
 
 @[rocq_alias embed_emp_valid_inj]
@@ -204,7 +204,7 @@ theorem embed_entails_inj {P Q : PROP1} (h : (⎡P⎤ : PROP2) ⊢ ⎡Q⎤) : P 
 
 /-- `⎡·⎤` reflects equivalence. -/
 @[rocq_alias embed_inj]
-theorem embed_inj {P Q : PROP1} (h : (embed P : PROP2) ≡ embed Q) : P ≡ Q :=
+theorem embed_inj {P Q : PROP1} (h : (embed P : PROP2) = embed Q) : P = Q :=
   BI.equiv_iff.mpr ⟨embed_entails_inj (BI.equiv_iff.mp h).mp,
                     embed_entails_inj (BI.equiv_iff.mp h).mpr⟩
 
@@ -320,10 +320,10 @@ instance embed_timeless [BiEmbedLater PROP1 PROP2] (P : PROP1) [Timeless P] :
 `MonoidHomomorphism.ofEquiv`, which is single-type). -/
 @[reducible] def mkEmbedHom {op₁ : PROP1 → PROP1 → PROP1} {op₂ : PROP2 → PROP2 → PROP2}
     {u₁ : PROP1} {u₂ : PROP2} [MonoidOps op₁ u₁] [MonoidOps op₂ u₂]
-    (hop : ∀ {x y}, (embed (op₁ x y) : PROP2) ≡ op₂ (embed x) (embed y))
-    (hunit : (embed u₁ : PROP2) ≡ u₂) :
-    MonoidHomomorphism op₁ op₂ u₁ u₂ (· ≡ ·) (embed (A := PROP1) (B := PROP2)) where
-  rel_refl := .rfl
+    (hop : ∀ {x y}, (embed (op₁ x y) : PROP2) = op₂ (embed x) (embed y))
+    (hunit : (embed u₁ : PROP2) = u₂) :
+    MonoidHomomorphism op₁ op₂ u₁ u₂ (· = ·) (embed (A := PROP1) (B := PROP2)) where
+  rel_refl := rfl
   rel_trans := .trans
   rel_proper ha hb := ⟨fun h => ha.symm.trans (h.trans hb), fun h => ha.trans (h.trans hb.symm)⟩
   op_proper ha hb := MonoidOps.op_proper ha hb
@@ -334,13 +334,13 @@ instance embed_timeless [BiEmbedLater PROP1 PROP2] (P : PROP1) [Timeless P] :
 @[rocq_alias embed_and_homomorphism]
 instance embed_and_homomorphism :
     MonoidHomomorphism (and (PROP := PROP1)) (and (PROP := PROP2)) iprop(True) iprop(True)
-      (· ≡ ·) (embed (A := PROP1) (B := PROP2)) :=
+      (· = ·) (embed (A := PROP1) (B := PROP2)) :=
   mkEmbedHom (fun {x y} => equiv_iff.mpr (embed_and x y)) (equiv_iff.mpr (embed_pure _))
 
 @[rocq_alias embed_or_homomorphism]
 instance embed_or_homomorphism :
     MonoidHomomorphism (or (PROP := PROP1)) (or (PROP := PROP2)) iprop(False) iprop(False)
-      (· ≡ ·) (embed (A := PROP1) (B := PROP2)) :=
+      (· = ·) (embed (A := PROP1) (B := PROP2)) :=
   mkEmbedHom (fun {x y} => equiv_iff.mpr (embed_or x y)) (equiv_iff.mpr (embed_pure False))
 
 @[rocq_alias embed_sep_entails_homomorphism]
@@ -359,7 +359,7 @@ instance embed_sep_entails_homomorphism :
 @[rocq_alias embed_sep_homomorphism]
 instance embed_sep_homomorphism [BiEmbedEmp PROP1 PROP2] :
     MonoidHomomorphism (sep (PROP := PROP1)) (sep (PROP := PROP2)) emp emp
-      (· ≡ ·) (embed (A := PROP1) (B := PROP2)) :=
+      (· = ·) (embed (A := PROP1) (B := PROP2)) :=
   mkEmbedHom (fun {x y} => equiv_iff.mpr (embed_sep x y)) (equiv_iff.mpr embed_emp)
 
 /-! ### Big separating conjunction

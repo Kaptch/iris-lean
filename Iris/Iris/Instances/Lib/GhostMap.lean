@@ -215,7 +215,7 @@ theorem ghost_map_alloc_strong [DecidableEq K] (P : GName → Prop) (m : H V) :
         (disjoint_empty_right _) DFrac.valid_own_one
         (all_map fun _ _ => Agree.toAgree_valid))
     refine CMRA.op_eqv ?_ (BigOpM.bigOpM_map_eqv _ _ _)
-    exact OFE.NonExpansive.eqv (OFE.Equiv.of_eq union_empty_right)
+    exact OFE.NonExpansive.eqv union_empty_right
 
 @[rocq_alias ghost_map_alloc_strong_empty]
 theorem ghost_map_alloc_strong_empty [DecidableEq K] (P : GName → Prop)
@@ -284,11 +284,10 @@ theorem ghost_map_auth_valid_2 {γ} {dq1 dq2 : DFrac} {m1 m2 : H V} :
   ipureintro
   have ⟨h₁, h₂⟩ := auth_op_auth_valid_iff.mp G
   refine ⟨h₁, equiv_iff_eq.mp fun k => ?_⟩
-  have h := h₂ k
+  have h := congrArg (get? · k) h₂
   simp only [get?_map, Option.map] at h
-  cases h₁ : get? m1 k <;> cases h₂ : get? m2 k <;>
-    grind [OFE.not_none_eqv_some, OFE.not_some_eqv_none,
-      → Agree.toAgree_inj, LeibnizO.eqv_inj, OFE.some_eqv_some, Option.some.injEq]
+  cases h₁ : get? m1 k <;> cases h₂ : get? m2 k <;> simp_all <;>
+    exact congrArg LeibnizO.car (Agree.toAgree_inj h)
 
 @[rocq_alias ghost_map_auth_agree]
 theorem ghost_map_auth_agree γ (dq1 dq2 : DFrac) (m1 m2 : H V) :
@@ -322,7 +321,7 @@ theorem ghost_map_lookup {γ dq} {m : H V} {k : K} {dq' v} :
   icombine H1 H2 gives %G
   ipureintro
   have ⟨av', _, _, h_av', _, h⟩ := auth_op_frag_valid_total_discrete_iff G
-  cases h₂ : get? m k <;> grind [get?_map,Agree.toAgree_included, OFE.leibniz]
+  cases h₂ : get? m k <;> grind [get?_map, Agree.toAgree_included, LeibnizO.eqv_inj]
 
 @[rocq_alias ghost_map_lookup_combine_gives_1]
 instance ghost_map_lookup_combine_gives_1 γ (m : H V) (k : K) (dq1 dq2 : DFrac) (v : V) :
@@ -442,7 +441,7 @@ theorem ghost_map_delete_big [DecidableEq K] {γ m} (m0 : H V) :
   refine Update.equiv_left (CMRA.op_right_eqv _ (BigOpM.bigOpM_map_eqv _ _ m0)) ?_
   refine (update_big_delete _ _).trans ?_
   refine Update.equiv_right ?_ .id
-  exact OFE.NonExpansive.eqv (OFE.Equiv.of_eq map_difference_map)
+  exact OFE.NonExpansive.eqv map_difference_map
 
 @[rocq_alias ghost_map_update_big]
 theorem ghost_map_update_big [DecidableEq K] {γ m} (m0 m1 : H V) (Heq : dom m0 = dom m1) :
@@ -470,7 +469,7 @@ theorem ghost_map_update_big [DecidableEq K] {γ m} (m0 m1 : H V) (Heq : dom m0 
       (all_map fun _ _ => Agree.toAgree_valid)).trans ?_
     refine Update.equiv_right ?_ .id
     refine CMRA.op_eqv ?_ (BigOpM.bigOpM_map_eqv _ _ _)
-    exact OFE.NonExpansive.eqv (OFE.Equiv.of_eq map_union.symm)
+    exact OFE.NonExpansive.eqv map_union.symm
 
 end lemmas
 

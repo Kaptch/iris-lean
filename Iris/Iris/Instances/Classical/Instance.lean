@@ -44,7 +44,7 @@ instance : Std.Preorder (Entails (PROP := HeapProp Val)) where
     apply h_xy σ
     exact h_x
 
-instance : COFE (HeapProp Val) := COFE.ofDiscrete Eq equivalence_eq
+instance : COFE (HeapProp Val) := COFE.ofDiscrete Eq equivalence_eq id
 
 instance : BI (HeapProp Val) where
   entails_preorder := by infer_instance

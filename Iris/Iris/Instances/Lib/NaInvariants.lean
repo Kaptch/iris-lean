@@ -42,7 +42,7 @@ instance coreId_valid_empty_empty : CoreId ((valid (∅ : CoPset), valid (∅ : 
 
 instance isUnit_valid_empty_empty : IsUnit ((valid (∅ : CoPset), valid (∅ : PosSet))) where
   unit_valid := ⟨trivial, trivial⟩
-  unit_left_id := ⟨unit_left_id, unit_left_id⟩
+  unit_left_id := Prod.ext unit_left_id unit_left_id
   pcore_unit := coreId_valid_empty_empty.core_id
 
 namespace NonAtomicInvariant
@@ -131,7 +131,7 @@ theorem own_union {p : NaInvPoolName} {E1 E2 : CoPset} (Hdisj : E1 ## E2) :
   refine BI.equiv_iff.mp (NonExpansive.eqv (f := iOwn (E := W.inv) p) ?_)
   refine .symm <| equiv_prod_ext (disj_op_union Hdisj) ?_
   refine .trans (disj_op_union disjoint_empty_left) ?_
-  exact .of_eq (by simp)
+  simp
 
 @[rocq_alias na_own_acc]
 theorem own_acc {E2 E1 : CoPset} {tid : NaInvPoolName} (Hsub : E2 ⊆ E1) :

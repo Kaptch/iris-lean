@@ -49,12 +49,12 @@ theorem refl {A : Type _} [OFE A] {P : PROP} {a : A} : P ⊢ internalEq a a :=
   true_intro.trans <| siPure_pure.mpr.trans <| siPure_mono (SiProp.internalEq_refl _ _)
 
 @[rocq_alias equiv_internal_eq]
-theorem of_equiv {A : Type _} [OFE A] {P : PROP} {a b : A} (h : a ≡ b) :
+theorem of_equiv {A : Type _} [OFE A] {P : PROP} {a b : A} (h : a = b) :
     P ⊢ internalEq a b :=
-  refl.trans (equiv_iff.mp (NonExpansive₂.eqv Equiv.rfl h)).1
+  refl.trans (equiv_iff.mp (NonExpansive₂.eqv rfl h)).1
 
 @[rocq_alias pure_internal_eq]
-theorem of_pure {A : Type _} [OFE A] {x y : A} : ⌜x ≡ y⌝ ⊢ internalEq (PROP := PROP) x y :=
+theorem of_pure {A : Type _} [OFE A] {x y : A} : ⌜x = y⌝ ⊢ internalEq (PROP := PROP) x y :=
   pure_elim' of_equiv
 
 @[rocq_alias internal_eq_rewrite]
@@ -104,12 +104,12 @@ open internalEq
 
 @[rocq_alias discrete_eq_1]
 theorem discrete_eq_mp {A : Type _} [OFE A] {a b : A} [TCOr (DiscreteE a) (DiscreteE b)] :
-    internalEq a b ⊢@{PROP} ⌜a ≡ b⌝ :=
+    internalEq a b ⊢@{PROP} ⌜a = b⌝ :=
   siPure_mono (SiProp.discrete_eq_internalEq _ _)|>.trans siPure_pure.mp
 
 @[rocq_alias discrete_eq]
 theorem discrete_eq {A : Type _} [OFE A] {a b : A} [TCOr (DiscreteE a) (DiscreteE b)] :
-    internalEq a b ⊣⊢@{PROP} ⌜a ≡ b⌝ :=
+    internalEq a b ⊣⊢@{PROP} ⌜a = b⌝ :=
   ⟨discrete_eq_mp, of_pure⟩
 
 @[rocq_alias fun_extI]
@@ -314,8 +314,8 @@ instance eq_timeless {A : Type _} [OFE A] (a b : A) [TCOr (DiscreteE a) (Discret
     Timeless (PROP := PROP) (internalEq a b) where
   timeless :=
     calc iprop(▷ internalEq a b)
-      _ ⊢ ▷ ⌜a ≡ b⌝ := later_mono discrete_eq.1
-      _ ⊢ ◇ ⌜a ≡ b⌝ := Timeless.timeless (P := iprop(⌜a ≡ b⌝))
+      _ ⊢ ▷ ⌜a = b⌝ := later_mono discrete_eq.1
+      _ ⊢ ◇ ⌜a = b⌝ := Timeless.timeless (P := iprop(⌜a = b⌝))
       _ ⊢ ◇ internalEq a b := except0_mono discrete_eq.2
 
 /-! ## Equality of propositions -/
@@ -371,7 +371,7 @@ theorem later_equivI_prop_mpr (P Q : PROP) :
 
 @[rocq_alias internal_eq_soundness]
 theorem internalEq_soundness {A : Type _} [OFE A] (x y : A) :
-    (⊢@{PROP} internalEq x y) → x ≡ y :=
+    (⊢@{PROP} internalEq x y) → x = y :=
   (SiProp.internalEq_soundness <| siPure_emp_valid.mp ·)
 
 /-! ## Derive NonExpansive/Contractive from internal statements -/

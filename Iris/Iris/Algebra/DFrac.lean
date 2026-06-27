@@ -30,9 +30,9 @@ inductive DFrac where
 #rocq_ignore DfracOwn_inj "Not needed"
 #rocq_ignore DfracBoth_inj "Not needed"
 
-@[simp] instance : COFE DFrac := COFE.ofDiscrete _ Eq_Equivalence
-instance : OFE.Leibniz DFrac := ⟨(·)⟩
-instance : OFE.Discrete DFrac := ⟨congrArg id⟩
+@[simp] instance : COFE DFrac := COFE.ofDiscrete _ Eq_Equivalence id
+instance : OFE.Discrete DFrac := ⟨id⟩
+theorem DFrac.dist_iff {n} {x y : DFrac} : x ≡{n}≡ y ↔ x = y := Iff.rfl
 #rocq_ignore dfracO "Use DFrac type with typeclass inference"
 
 namespace DFrac
@@ -75,13 +75,16 @@ instance instCMRADFrac : CMRA DFrac where
   Valid := valid
   ValidN _ := valid
   op_ne := { ne _ _ _ := congrArg (op _) }
-  pcore_ne {_} := by rintro ⟨⟩ ⟨⟩ <;> simp [pcore] <;> nofun
+  pcore_ne {_} := by
+    intro x y cx h e; subst h; rcases x with (_|_|_) <;> simp only [pcore] at e ⊢
+    · exact absurd e (by simp)
+    all_goals (simp only [Option.some.injEq] at e; exact ⟨_, rfl, e.symm⟩)
   validN_ne H := H ▸ id
   valid_iff_validN := ⟨fun x _ => x, fun x => x 0⟩
   validN_succ := id
   validN_op_left {_} := by rintro ⟨⟩ ⟨⟩ <;> simp [valid, op] <;> grind
-  assoc := by rintro ⟨⟩ ⟨⟩ ⟨⟩ <;> simp [op] <;> grind
-  comm := by rintro ⟨⟩ ⟨⟩ <;> simp [op] <;> grind
+  assoc := by rintro ⟨⟩ ⟨⟩ ⟨⟩ <;> simp [op] <;> grind [Rat.add_assoc]
+  comm := by rintro ⟨⟩ ⟨⟩ <;> simp [op] <;> grind [Rat.add_comm]
   pcore_op_left := by rintro ⟨⟩ ⟨⟩ <;> simp [op, pcore]
   pcore_idem := by rintro ⟨⟩ ⟨⟩ <;> simp [pcore]
   pcore_op_mono := by
@@ -91,25 +94,21 @@ instance instCMRADFrac : CMRA DFrac where
       rcases z with z|_|z <;> simp [op]
   extend {_} := by -- x y z} Hx Hxyz := by
     rintro (x|_|x)
-    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op] at Hxyz
-      all_goals have Hxyz' := discrete Hxyz <;> simp at Hxyz'
-      exists own y, own z
-    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op] at Hxyz
-      any_goals have Hxyz' := discrete Hxyz <;> simp at Hxyz'
-      exists discard, discard
-    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op] at Hxyz
-      any_goals have Hxyz' := discrete Hxyz <;> simp at Hxyz'
-      · exists own x, discard
-        obtain rfl : x = y := Subtype.ext Hxyz'
-        exact ⟨.rfl, .rfl, .rfl⟩
-      · exists own y, ownDiscard z
-      · exists discard, own x
-        obtain rfl : x = z := Subtype.ext Hxyz'
-        exact ⟨.rfl, .rfl, .rfl⟩
-      · exists discard, ownDiscard x
-      · exists ownDiscard y, own z
-      · exists ownDiscard x, discard
-      · exists ownDiscard y, ownDiscard z
+    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op, DFrac.dist_iff] at Hxyz
+      exact ⟨own y, own z, congrArg own (Subtype.ext (by rw [Qp.val_add]; exact Hxyz)), rfl, rfl⟩
+    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op, DFrac.dist_iff] at Hxyz
+      exact ⟨discard, discard, rfl, rfl, rfl⟩
+    · rintro (y|_|y) (z|_|z) Hx Hxyz <;> simp [op, DFrac.dist_iff] at Hxyz
+      · exact ⟨own x, discard, rfl, congrArg own (Subtype.ext Hxyz), rfl⟩
+      · exact ⟨own y, ownDiscard z,
+              congrArg ownDiscard (Subtype.ext (by rw [Qp.val_add]; exact Hxyz)), rfl, rfl⟩
+      · exact ⟨discard, own x, rfl, rfl, congrArg own (Subtype.ext Hxyz)⟩
+      · exact ⟨discard, ownDiscard x, rfl, rfl, congrArg ownDiscard (Subtype.ext Hxyz)⟩
+      · exact ⟨ownDiscard y, own z,
+              congrArg ownDiscard (Subtype.ext (by rw [Qp.val_add]; exact Hxyz)), rfl, rfl⟩
+      · exact ⟨ownDiscard x, discard, rfl, congrArg ownDiscard (Subtype.ext Hxyz), rfl⟩
+      · exact ⟨ownDiscard y, ownDiscard z,
+              congrArg ownDiscard (Subtype.ext (by rw [Qp.val_add]; exact Hxyz)), rfl, rfl⟩
 
 @[rocq_alias dfrac_full_exclusive]
 instance own_whole_exclusive : CMRA.Exclusive (α := DFrac) (own 1) where
@@ -137,22 +136,21 @@ instance one_exclusive_right [CMRA V] {v : V} : CMRA.Exclusive (v, own (One.one 
 @[rocq_alias dfrac_cancelable]
 instance {f : Qp} : CMRA.Cancelable (own f) where
   cancelableN {_} := by
-    rintro (a|_|a) (b|_|b) <;> simp [CMRA.ValidN, CMRA.op, op] <;> intro H Hxyz
-    any_goals have Hxyz' := discrete Hxyz <;> simp at Hxyz'
-    · exact congrArg own (Subtype.ext (by grind))
-    · exact absurd Hxyz' (by have := b.2; grind)
-    · exact absurd Hxyz' (by have := a.2; grind)
-    · exact congrArg ownDiscard (Subtype.ext (by grind))
+    rintro (a|_|a) (b|_|b) <;>
+      simp only [CMRA.ValidN, CMRA.op, op, valid, DFrac.dist_iff, DFrac.own.injEq,
+        DFrac.ownDiscard.injEq, Qp.ext_iff, Qp.val_add] <;>
+      first
+      | exact fun _ _ => trivial
+      | intro H h; grind
+      | intro H h; exact absurd h (by simp)
 
 @[rocq_alias dfrac_own_id_free]
 instance {f : Qp} : CMRA.IdFree (own f) where
   id_free0_r := by
     rintro (y|_|y) <;>
-      simp [CMRA.ValidN, CMRA.op, op] <;>
+      simp [CMRA.ValidN, CMRA.op, op, valid, DFrac.dist_iff] <;>
       intro H Hxyz <;>
-      any_goals have Hxyz' := discrete Hxyz <;>
-      simp at Hxyz'
-    exact absurd Hxyz' (by have := y.2; grind)
+      exact absurd Hxyz (by grind)
 
 @[rocq_alias dfrac_valid_own_1]
 theorem valid_own_one : ✓ own (1 : Qp) := by show (1 : Qp).val ≤ 1; grind
@@ -178,7 +176,7 @@ theorem valid_own_op_discard {q : Qp} : ✓ own q • discard ↔ q.val < 1 := b
 instance : CMRA.Discrete DFrac where
   discrete_valid {x} := by simp [CMRA.Valid, CMRA.ValidN]
 
-theorem is_discrete {q : DFrac} : OFE.DiscreteE q := ⟨congrArg id⟩
+theorem is_discrete {q : DFrac} : OFE.DiscreteE q := ⟨id⟩
 
 @[rocq_alias dfrac_discarded_core_id]
 instance : CMRA.CoreId (DFrac.discard) where
@@ -239,13 +237,13 @@ theorem valid_iff {dq : DFrac} : ✓ dq ↔
   cases dq <;> rfl
 
 @[rocq_alias dfrac_discarded_included]
-theorem discard_included : (discard : DFrac) ≼ discard := ⟨discard, .rfl⟩
+theorem discard_included : (discard : DFrac) ≼ discard := ⟨discard, rfl⟩
 
 @[rocq_alias dfrac_own_included]
 theorem own_included {p q : Qp} : own p ≼ own q ↔ ∃ r, q = p + r := by
-  refine ⟨fun ⟨z, hz⟩ => ?_, fun ⟨r, hr⟩ => ⟨own r, hr ▸ .rfl⟩⟩
+  refine ⟨fun ⟨z, hz⟩ => ?_, fun ⟨r, hr⟩ => ⟨own r, hr ▸ rfl⟩⟩
   rcases z with (r|_|r) <;> simp [CMRA.op, op] at hz
-  exact ⟨r, Qp.ext_iff.mpr hz⟩
+  exact ⟨r, Subtype.ext (by rw [Qp.val_add]; exact hz)⟩
 
 @[rocq_alias dfrac_is_op]
 instance isOp_dfrac_own {q q1 q2 : Qp} [h : IsOp io1 q io2 q1 io3 q2] :

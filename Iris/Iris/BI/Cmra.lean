@@ -158,9 +158,9 @@ theorem internalCmraIncluded_discrete {a b : A} [CMRA.Discrete A] :
   refine ⟨?_, pure_elim' internalCmraIncluded_intro⟩
   calc internalCmraIncluded a b
     _ ⊢ <si_pure> (∃ c, internalEq b (a • c)) := siPure_internalCmraIncluded.mp
-    _ ⊢ <si_pure> (∃ c, ⌜b ≡ a • c⌝) := siPure_mono <| exists_mono fun _ => discrete_eq_mp
-    _ ⊢ <si_pure> ⌜∃ c, b ≡ a • c⌝ := siPure_mono pure_exists.mp
-    _ ⊢ ⌜∃ c, b ≡ a • c⌝ := siPure_pure.mp
+    _ ⊢ <si_pure> (∃ c, ⌜b = a • c⌝) := siPure_mono <| exists_mono fun _ => discrete_eq_mp
+    _ ⊢ <si_pure> ⌜∃ c, b = a • c⌝ := siPure_mono pure_exists.mp
+    _ ⊢ ⌜∃ c, b = a • c⌝ := siPure_pure.mp
     _ ⊢ ⌜a ≼ b⌝ := pure_mono fun ⟨c, h⟩ => ⟨c, h⟩
 
 @[rocq_alias internal_included_refl]

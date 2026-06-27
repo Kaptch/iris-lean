@@ -55,12 +55,12 @@ theorem bigAndL_mono {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ k x, l[k
   bigOpL_gen_proper (· ⊢ ·) .rfl and_mono (h _ _ ·)
 
 @[rocq_alias big_andL_proper]
-theorem bigAndL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x ≡ Ψ k x) :
-    ([∧list] k ↦ x ∈ l, Φ k x) ≡ [∧list] k ↦ x ∈ l, Ψ k x :=
+theorem bigAndL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x = Ψ k x) :
+    ([∧list] k ↦ x ∈ l, Φ k x) = [∧list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv h
 
-theorem bigAndL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x ≡ Ψ k x) :
-    ([∧list] k ↦ x ∈ l, Φ k x) ≡ [∧list] k ↦ x ∈ l, Ψ k x :=
+theorem bigAndL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x = Ψ k x) :
+    ([∧list] k ↦ x ∈ l, Φ k x) = [∧list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv_of_forall_eqv h
 
 instance bigAndL_affine_inst {Φ : Nat → A → PROP} {l : List A} [BIAffine PROP] :
@@ -70,13 +70,13 @@ instance bigAndL_affine_inst {Φ : Nat → A → PROP} {l : List A} [BIAffine PR
 
 @[rocq_alias big_andL_and]
 theorem bigAndL_and_eqv {Φ Ψ : Nat → A → PROP} {l : List A} :
-    ([∧list] k ↦ x ∈ l, iprop(Φ k x ∧ Ψ k x)) ≡
+    ([∧list] k ↦ x ∈ l, iprop(Φ k x ∧ Ψ k x)) =
       iprop(([∧list] k ↦ x ∈ l, Φ k x) ∧ [∧list] k ↦ x ∈ l, Ψ k x) :=
   bigOpL_op_eqv Φ Ψ l
 
 @[rocq_alias big_andL_fmap]
 theorem bigAndL_map {B : Type _} (f : A → B) {Φ : Nat → B → PROP} {l : List A} :
-    ([∧list] k ↦ y ∈ (l.map f), Φ k y) ≡ [∧list] k ↦ x ∈ l, Φ k (f x) :=
+    ([∧list] k ↦ y ∈ (l.map f), Φ k y) = [∧list] k ↦ x ∈ l, Φ k (f x) :=
   bigOpL_map_eqv f Φ l
 
 @[rocq_alias big_andL_lookup]
@@ -141,7 +141,7 @@ theorem bigAndL_mem {Φ : A → PROP} {l : List A} {x : A} (h : x ∈ l) :
 
 @[rocq_alias big_andL_zip_seq]
 theorem bigAndL_zip_seq {Φ : A × Nat → PROP} {n : Nat} {l : List A} :
-    ([∧list] xy ∈ l.zipIdx n, Φ xy) ≡ [∧list] i ↦ x ∈ l, Φ (x, n + i) :=
+    ([∧list] xy ∈ l.zipIdx n, Φ xy) = [∧list] i ↦ x ∈ l, Φ (x, n + i) :=
   bigOpL_zipIdx_eqv Φ n l
 
 @[rocq_alias big_andL_bind]
@@ -164,7 +164,7 @@ theorem bigAndL_laterN {Φ : Nat → A → PROP} {l : List A} {n : Nat} :
   | _ + 1 => (later_congr bigAndL_laterN).trans bigAndL_later
 
 theorem bigAndL_perm {Φ : A → PROP} {l₁ l₂ : List A} (hp : l₁.Perm l₂) :
-    ([∧list] x ∈ l₁, Φ x) ≡ [∧list] x ∈ l₂, Φ x :=
+    ([∧list] x ∈ l₁, Φ x) = [∧list] x ∈ l₂, Φ x :=
   bigOpL_eqv_of_perm Φ hp
 
 @[rocq_alias big_andL_submseteq]

@@ -78,7 +78,7 @@ theorem least_fixpoint_unfold_mp {x} [BIMonoPred F] :
 
 @[rocq_alias least_fixpoint_unfold]
 theorem least_fixpoint_unfold {x} [BIMonoPred F] :
-    bi_least_fixpoint F x ≡ F (bi_least_fixpoint F) x :=
+    bi_least_fixpoint F x = F (bi_least_fixpoint F) x :=
   equiv_iff.mpr ⟨least_fixpoint_unfold_mp _, least_fixpoint_unfold_mpr _⟩
 
 @[rocq_alias least_fixpoint_iter]
@@ -263,7 +263,7 @@ theorem greatest_fixpoint_unfold_mpr {x} [BIMonoPred F] :
 
 @[rocq_alias greatest_fixpoint_unfold]
 theorem greatest_fixpoint_unfold {x} [BIMonoPred F] :
-    bi_greatest_fixpoint F x ≡ F (bi_greatest_fixpoint F) x :=
+    bi_greatest_fixpoint F x = F (bi_greatest_fixpoint F) x :=
   equiv_iff.mpr ⟨greatest_fixpoint_unfold_mp _, greatest_fixpoint_unfold_mpr _⟩
 
 @[rocq_alias greatest_fixpoint_coiter]

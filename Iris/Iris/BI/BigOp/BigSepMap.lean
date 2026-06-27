@@ -30,7 +30,7 @@ namespace BigSepM
 @[simp, rocq_alias big_sepM_empty]
 theorem bigSepM_empty {Φ : K → V → PROP} :
     ([∗map] k ↦ x ∈ (∅ : M V), Φ k x) ⊣⊢ emp :=
-  equiv_iff.mp <| .of_eq <| bigOpM_empty Φ
+  equiv_iff.mp <| bigOpM_empty Φ
 
 @[rocq_alias big_sepM_empty']
 theorem bigSepM_empty_intro {P : PROP} [Affine P] {Φ : K → V → PROP} :
@@ -77,13 +77,13 @@ theorem bigSepM_mono {Φ Ψ : K → V → PROP} {m : M V}
 
 @[rocq_alias big_sepM_proper]
 theorem bigSepM_eqv {Φ Ψ : K → V → PROP} {m : M V}
-    (h : ∀ {k x}, get? m k = some x → Φ k x ≡ Ψ k x) :
-    ([∗map] k ↦ x ∈ m, Φ k x) ≡ [∗map] k ↦ x ∈ m, Ψ k x :=
+    (h : ∀ {k x}, get? m k = some x → Φ k x = Ψ k x) :
+    ([∗map] k ↦ x ∈ m, Φ k x) = [∗map] k ↦ x ∈ m, Ψ k x :=
   bigOpM_eqv h
 
 theorem bigSepM_eqv_of_forall_eqv {Φ Ψ : K → V → PROP} {m : M V}
-    (h : ∀ {k x}, Φ k x ≡ Ψ k x) :
-    ([∗map] k ↦ x ∈ m, Φ k x) ≡ [∗map] k ↦ x ∈ m, Ψ k x :=
+    (h : ∀ {k x}, Φ k x = Ψ k x) :
+    ([∗map] k ↦ x ∈ m, Φ k x) = [∗map] k ↦ x ∈ m, Ψ k x :=
   bigOpM_proper_pointwise m h
 
 @[rocq_alias big_sepM_ne]
@@ -184,13 +184,13 @@ theorem bigSepM_emp [DecidableEq K] {m : M V} :
 
 @[rocq_alias big_sepM_sep]
 theorem bigSepM_sep_eqv {Φ Ψ : K → V → PROP} {m : M V} :
-    ([∗map] k ↦ x ∈ m, iprop(Φ k x ∗ Ψ k x)) ≡
+    ([∗map] k ↦ x ∈ m, iprop(Φ k x ∗ Ψ k x)) =
       iprop(([∗map] k ↦ x ∈ m, Φ k x) ∗ [∗map] k ↦ x ∈ m, Ψ k x) :=
   bigOpM_op_eqv Φ Ψ m
 
 @[deprecated "bigSepM_sep_eqv.symm" (since := "26/03/30"), rocq_alias big_sepM_sep_2]
 theorem bigSepM_sep_eqv_symm {Φ Ψ : K → V → PROP} {m : M V} :
-    iprop(([∗map] k ↦ x ∈ m, Φ k x) ∗ [∗map] k ↦ x ∈ m, Ψ k x) ≡
+    iprop(([∗map] k ↦ x ∈ m, Φ k x) ∗ [∗map] k ↦ x ∈ m, Ψ k x) =
       [∗map] k ↦ x ∈ m, iprop(Φ k x ∗ Ψ k x) :=
   bigSepM_sep_eqv.symm
 
@@ -250,8 +250,8 @@ theorem bigSepM_insert_elim {Φ : K → V → PROP} {m : M V} {i : K} {x : V} [�
 
 @[rocq_alias big_sepM_insert_override]
 theorem bigSepM_insert_exist {Φ : K → V → PROP} {m : M V} {i : K} {x x' : V}
-    (hi : get? m i = some x) (hΦ : Φ i x ≡ Φ i x') :
-    ([∗map] k ↦ v ∈ insert m i x', Φ k v) ≡ [∗map] k ↦ v ∈ m, Φ k v :=
+    (hi : get? m i = some x) (hΦ : Φ i x = Φ i x') :
+    ([∗map] k ↦ v ∈ insert m i x', Φ k v) = [∗map] k ↦ v ∈ m, Φ k v :=
   bigOpM_insert_override_eqv hi hΦ
 
 @[rocq_alias big_sepM_insert_override_1]
@@ -269,14 +269,14 @@ theorem bigSepM_insert_exist_intro {Φ : K → V → PROP} {m : M V} {i : K} {x 
 @[rocq_alias big_sepM_fn_insert]
 theorem bigSepM_fn_insert [DecidableEq K] {B : Type _} {g : K → V → B → PROP} {f : K → B}
     {m : M V} {i : K} {x : V} {b : B} (hi : get? m i = none) :
-    ([∗map] k ↦ y ∈ insert m i x, g k y (if k = i then b else f k)) ≡
+    ([∗map] k ↦ y ∈ insert m i x, g k y (if k = i then b else f k)) =
     iprop(g i x b ∗ [∗map] k ↦ y ∈ m, g k y (f k)) :=
   bigOpM_fn_insert_eqv g f x b hi
 
 @[rocq_alias big_sepM_fn_insert']
 theorem bigSepM_fn_insert_key [DecidableEq K] {f : K → PROP} {m : M V} {i : K} {x : V} {P : PROP}
     (hi : get? m i = none) :
-    ([∗map] k ↦ _v ∈ insert m i x, if k = i then P else f k) ≡
+    ([∗map] k ↦ _v ∈ insert m i x, if k = i then P else f k) =
     iprop(P ∗ [∗map] k ↦ _v ∈ m, f k) :=
   bigOpM_fn_insert_eqv' f x P hi
 
@@ -404,25 +404,25 @@ theorem bigSepM_laterN_2 {Φ : K → V → PROP} {m : M V} {n : Nat} :
 
 @[rocq_alias big_sepM_fmap]
 theorem bigSepM_map {Φ : K → V → PROP} {m : M V} {f : V → V} :
-    ([∗map] k ↦ y ∈ map f m, Φ k y) ≡ [∗map] k ↦ y ∈ m, Φ k (f y) :=
+    ([∗map] k ↦ y ∈ map f m, Φ k y) = [∗map] k ↦ y ∈ m, Φ k (f y) :=
   bigOpM_map_eqv f Φ m
 
 @[rocq_alias big_sepM_omap]
 theorem bigSepM_filterMap {Φ : K → V → PROP} {m : M V} {f : V → Option V}
     (hinj : Function.Injective f) :
-    ([∗map] k ↦ y ∈ filterMap f m, Φ k y) ≡
+    ([∗map] k ↦ y ∈ filterMap f m, Φ k y) =
       [∗map] k ↦ y ∈ m, (f y).elim iprop(emp) (Φ k) :=
   bigOpM_filterMap_eqv Φ m hinj
 
 @[rocq_alias big_sepM_filter']
 theorem bigSepM_filter_cond {Φ : K → V → PROP} {m : M V} (p : K → V → Bool) :
-    ([∗map] k ↦ x ∈ filter p m, Φ k x) ≡
+    ([∗map] k ↦ x ∈ filter p m, Φ k x) =
       [∗map] k ↦ x ∈ m, if p k x then Φ k x else emp :=
   bigOpM_filter_eqv p Φ m
 
 @[rocq_alias big_sepM_filter]
 theorem bigSepM_filter [BIAffine PROP] {Φ : K → V → PROP} {m : M V} (p : K → V → Bool) :
-    ([∗map] k ↦ x ∈ filter p m, Φ k x) ≡
+    ([∗map] k ↦ x ∈ filter p m, Φ k x) =
       [∗map] k ↦ x ∈ m, iprop(⌜p k x = true⌝ → Φ k x) :=
   (bigSepM_filter_cond p).trans <| bigOpM_eqv fun {k x} _ => by
     match hp : p k x with

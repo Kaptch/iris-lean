@@ -65,12 +65,12 @@ theorem bigSepL_mono {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l
   bigOpL_gen_proper (· ⊢ ·) .rfl sep_mono (h ·)
 
 @[rocq_alias big_sepL_proper]
-theorem bigSepL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x ≡ Ψ k x) :
-    ([∗list] k ↦ x ∈ l, Φ k x) ≡ [∗list] k ↦ x ∈ l, Ψ k x :=
+theorem bigSepL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x = Ψ k x) :
+    ([∗list] k ↦ x ∈ l, Φ k x) = [∗list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv h
 
-theorem bigSepL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x ≡ Ψ k x) :
-    ([∗list] k ↦ x ∈ l, Φ k x) ≡ [∗list] k ↦ x ∈ l, Ψ k x :=
+theorem bigSepL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x = Ψ k x) :
+    ([∗list] k ↦ x ∈ l, Φ k x) = [∗list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv_of_forall_eqv h
 
 @[rocq_alias big_sepL_ne]
@@ -232,17 +232,17 @@ theorem bigSepL_take_drop {Φ : Nat → A → PROP} {l : List A} {n : Nat} :
 
 @[rocq_alias big_sepL_fmap]
 theorem bigSepL_map {B : Type _} (f : A → B) {Φ : Nat → B → PROP} {l : List A} :
-    ([∗list] k ↦ y ∈ l.map f, Φ k y) ≡ [∗list] k ↦ x ∈ l, Φ k (f x) :=
+    ([∗list] k ↦ y ∈ l.map f, Φ k y) = [∗list] k ↦ x ∈ l, Φ k (f x) :=
   bigOpL_map_eqv f Φ l
 
 @[rocq_alias big_sepL_omap]
 theorem bigSepL_filterMap {B : Type _} (f : A → Option B) {Φ : B → PROP} {l : List A} :
-    ([∗list] y ∈ l.filterMap f, Φ y) ≡ [∗list] x ∈ l, (f x).elim emp Φ :=
+    ([∗list] y ∈ l.filterMap f, Φ y) = [∗list] x ∈ l, (f x).elim emp Φ :=
   bigOpL_filterMap_eqv f Φ l
 
 @[rocq_alias big_sepL_bind]
 theorem bigSepL_flatMap {B : Type _} (f : A → List B) {Φ : B → PROP} {l : List A} :
-    ([∗list] y ∈ l.flatMap f, Φ y) ≡ [∗list] x ∈ l, [∗list] y ∈ f x, Φ y :=
+    ([∗list] y ∈ l.flatMap f, Φ y) = [∗list] x ∈ l, [∗list] y ∈ f x, Φ y :=
   bigOpL_flatMap_eqv f Φ l
 
 @[rocq_alias big_sepL_lookup_acc]
@@ -1216,10 +1216,10 @@ theorem bigSepL2_dist_2 [OFE A] [OFE B]
 theorem bigSepL2_proper_2 [OFE A] [OFE B]
     {Φ Ψ : Nat → A → B → PROP} {l1 l1' : List A} {l2 l2' : List B}
     (hl1 : l1.length = l1'.length) (hl2 : l2.length = l2'.length)
-    (hel1 : ∀ {k : Nat} {x x' : A}, l1[k]? = some x → l1'[k]? = some x' → x ≡ x')
-    (hel2 : ∀ {k : Nat} {y y' : B}, l2[k]? = some y → l2'[k]? = some y' → y ≡ y')
-    (hf : ∀ {k y1 y1' y2 y2'}, l1[k]? = some y1 → l1'[k]? = some y1' → y1 ≡ y1' →
-      l2[k]? = some y2 → l2'[k]? = some y2' → y2 ≡ y2' →
+    (hel1 : ∀ {k : Nat} {x x' : A}, l1[k]? = some x → l1'[k]? = some x' → x = x')
+    (hel2 : ∀ {k : Nat} {y y' : B}, l2[k]? = some y → l2'[k]? = some y' → y = y')
+    (hf : ∀ {k y1 y1' y2 y2'}, l1[k]? = some y1 → l1'[k]? = some y1' → y1 = y1' →
+      l2[k]? = some y2 → l2'[k]? = some y2' → y2 = y2' →
       Φ k y1 y2 ⊣⊢ Ψ k y1' y2') :
     ([∗list] k ↦ x1;x2 ∈ l1;l2, Φ k x1 x2) ⊣⊢
       ([∗list] k ↦ x1;x2 ∈ l1';l2', Ψ k x1 x2) :=
@@ -1240,7 +1240,7 @@ end BigSepL2
 
 #rocq_ignore big_sepL_mono' "Use BigSepL.bigSepL_mono directly."
 #rocq_ignore big_sepL2_mono' "Use BigSepL2.bigSepL2_mono directly."
-#rocq_ignore big_sepL2_ne' "bigSepL2 is preserved under ≡ by nonexpansivity."
+#rocq_ignore big_sepL2_ne' "bigSepL2 is preserved under = by nonexpansivity."
 #rocq_ignore big_sepL2_proper' "bigSepL2 is preserved under ⊣⊢."
 
 end BI

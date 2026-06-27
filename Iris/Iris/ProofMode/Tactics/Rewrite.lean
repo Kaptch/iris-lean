@@ -181,7 +181,7 @@ def iRewriteHyp {prop : Q(Type u)} {bi : Q(BI $prop)}
 
 /--
   `irewrite [rules] at loc` applies a sequence `rules` of internal equalities
-  (`≡`) to the locations (`loc`). The locations `loc` may contain hypothesis
+  (`=`) to the locations (`loc`). The locations `loc` may contain hypothesis
   names and/or the goal, represented by `⊢`.
 
   Each rule is a proof mode term, optionally prefixed with `←` for

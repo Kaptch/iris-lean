@@ -33,7 +33,7 @@ instance asEmpValid_bientails [bi : BI PROP] (P Q : PROP)
 
 @[rocq_alias as_emp_valid_equiv]
 instance asEmpValid_equiv [bi : BI PROP] (P Q : PROP)
-: AsEmpValid d (P ≡ Q) io1 PROP io2 bi iprop(P ∗-∗ Q) where
+: AsEmpValid d (P = Q) io1 PROP io2 bi iprop(P ∗-∗ Q) where
   as_emp_valid := ⟨λ _ h => equiv_wandIff (equiv_iff.1 h), λ _ h => (equiv_iff.2 (wandIff_equiv h))⟩
 
 @[rocq_alias as_emp_valid_forall]

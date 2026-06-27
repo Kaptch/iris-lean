@@ -15,8 +15,8 @@ meta import Iris.Std.RocqPorting
 
 The fractional authoritative camera has elements `●F{dq} a` (authoritative with discardable
 fraction) and `◯F{q} a` (fragment with fraction). Splitting works differently for the two parts:
-- `●F{dq1 • dq2} a ≡ ●F{dq1} a • ●F{dq2} a` (duplicates knowledge)
-- `◯F{q1 + q2} (a1 • a2) ≡ ◯F{q1} a1 • ◯F{q2} a2` (splits the lower bound)
+- `●F{dq1 • dq2} a = ●F{dq1} a • ●F{dq2} a` (duplicates knowledge)
+- `◯F{q1 + q2} (a1 • a2) = ◯F{q1} a1 • ◯F{q2} a2` (splits the lower bound)
 -/
 
 open Iris OFE CMRA UCMRA Auth Option
@@ -83,7 +83,7 @@ instance frag_discrete {q : Qp} {a : A} [ha : DiscreteE a] : DiscreteE (◯F{q} 
 @[rocq_alias frac_auth_dfrac_validN]
 theorem dfrac_validN {dq : DFrac} {n : Nat} {a : A} (hdq : ✓ dq) (ha : ✓{n} a) :
     ✓{n} (●F{dq} a) • ◯F a := by
-  simpa only [both_dfrac_validN] using ⟨hdq, ⟨none, .rfl⟩, Qp.valid_one, ha⟩
+  simpa only [both_dfrac_validN] using ⟨hdq, ⟨none, Dist.rfl⟩, Qp.valid_one, ha⟩
 
 @[rocq_alias frac_auth_validN]
 theorem validN {n : Nat} {a : A} (ha : ✓{n} a) : ✓{n} (●F a : FracAuth) • ◯F a :=
@@ -91,7 +91,7 @@ theorem validN {n : Nat} {a : A} (ha : ✓{n} a) : ✓{n} (●F a : FracAuth) �
 
 @[rocq_alias frac_auth_dfrac_valid]
 theorem dfrac_valid {dq : DFrac} {a : A} (hdq : ✓ dq) (ha : ✓ a) : ✓ (●F{dq} a) • ◯F a :=
-  auth_both_dfrac_valid_2 hdq ⟨valid_iff_validN.mpr fun _ => Qp.valid_one, ha⟩ ⟨none, .rfl⟩
+  auth_both_dfrac_valid_2 hdq ⟨valid_iff_validN.mpr fun _ => Qp.valid_one, ha⟩ ⟨none, rfl⟩
 
 @[rocq_alias frac_auth_valid]
 theorem valid {a : A} (ha : ✓ a) : ✓ (●F a : FracAuth) • ◯F a :=
@@ -105,12 +105,12 @@ theorem agreeN {dq : DFrac} {a b : A} (h : ✓{n} (●F{dq} a) • ◯F b) : a �
   exact (dist_of_inc_exclusive h.2.1 h.2.2).2.symm
 
 @[rocq_alias frac_auth_agree]
-theorem agree {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a ≡ b :=
+theorem agree {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a = b :=
   equiv_dist.mpr fun n => agreeN (valid_iff_validN.mp h n)
 
 @[rocq_alias frac_auth_agree_L]
-theorem agree_L [OFE.Leibniz A] {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a = b :=
-  (agree h).to_eq
+theorem agree_L {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a = b :=
+  agree h
 
 /-! ## Inclusion -/
 
@@ -128,9 +128,10 @@ theorem included [CMRA.Discrete A] {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) 
       some b ≼ some a := by
   rw [both_dfrac_valid_discrete] at h
   obtain ⟨_, ⟨mc, hmc⟩, hv⟩ := h
-  match mc with
-  | none => exact ⟨none, hmc.2⟩
-  | some (_, cr) => exact ⟨some cr, hmc.2⟩
+  rcases mc with _ | ⟨_, cr⟩
+  · exact ⟨none, congrArg some (Prod.mk.inj (Option.some.inj hmc)).2⟩
+  · obtain ⟨_, h2⟩ := Prod.mk.inj (Option.some.inj hmc)
+    exact ⟨some cr, congrArg some h2⟩
 
 @[rocq_alias frac_auth_includedN_total]
 theorem includedN_total [IsTotal A] {dq : DFrac} {a b : A} (h : ✓{n} (●F{dq} a) • ◯F{q} b) :
@@ -182,12 +183,12 @@ theorem frag_valid {q : Qp} {a : A} : (✓ ◯F{q} a) ↔ q.val ≤ 1 ∧ ✓ a 
 /-! ## Operations -/
 
 @[rocq_alias frac_auth_auth_dfrac_op]
-theorem auth_dfrac_op {dq1 dq2 : DFrac} {a : A} : (●F{dq1 • dq2} a) ≡ (●F{dq1} a) • ●F{dq2} a :=
+theorem auth_dfrac_op {dq1 dq2 : DFrac} {a : A} : (●F{dq1 • dq2} a) = (●F{dq1} a) • ●F{dq2} a :=
   Auth.auth_dfrac_op
 
 @[rocq_alias frac_auth_frag_op]
-theorem frag_op {q1 q2 : Qp} {a1 a2 : A} : (◯F{q1 + q2} (a1 • a2)) ≡ (◯F{q1} a1) • ◯F{q2} a2 :=
-  .rfl
+theorem frag_op {q1 q2 : Qp} {a1 a2 : A} : (◯F{q1 + q2} (a1 • a2)) = (◯F{q1} a1) • ◯F{q2} a2 :=
+  rfl
 
 /-! ## Auth-auth op validity -/
 
@@ -203,9 +204,9 @@ theorem auth_op_validN {a b : A} (h : ✓{n} (●F a : FracAuth) • ●F b) : F
 
 @[rocq_alias frac_auth_auth_dfrac_op_valid]
 theorem auth_dfrac_op_valid {dq1 dq2 : DFrac} {a b : A} (h : ✓ (●F{dq1} a) • ●F{dq2} b) :
-    ✓ (dq1 • dq2) ∧ a ≡ b := by
+    ✓ (dq1 • dq2) ∧ a = b := by
   rw [Auth.auth_dfrac_op_valid] at h
-  exact ⟨h.1, h.2.1.2⟩
+  exact ⟨h.1, (Prod.mk.inj (Option.some.inj h.2.1)).2⟩
 
 @[rocq_alias frac_auth_auth_op_valid]
 theorem auth_op_valid {a b : A} (h : ✓ (●F a : FracAuth) • ●F b) : False :=
@@ -231,14 +232,14 @@ theorem frag_op_valid {q1 q2 : Qp} {a b : A} :
 instance isOp_frac_auth {q q1 q2 : Qp} {a1 a2 : A} {a : outParam A}
     [h1 : IsOp io1 q io2 q1 io3 q2] [h2 : IsOp io1 a io2 a1 io3 a2] :
     IsOp io1 (◯F{q} a) io2 (◯F{q1} a1) io3 (◯F{q2} a2) where
-  is_op := ⟨⟨⟩, ⟨h1.is_op, h2.is_op⟩⟩
+  is_op := h1.is_op ▸ h2.is_op ▸ frag_op
 
 set_option synthInstance.checkSynthOrder false in
 @[rocq_alias frac_auth_is_op_core_id]
 instance isOp_frac_auth_core_id {q q1 q2 : Qp} {a : A}
     [h1 : CoreId a] [h2 : IsOp io1 q io2 q1 io3 q2] :
     IsOp io1 (◯F{q} a) io2 (◯F{q1} a) io3 (◯F{q2} a) where
-  is_op := ⟨⟨⟩, ⟨h2.is_op, (op_self a).symm⟩⟩
+  is_op := by rw [h2.is_op]; have := @frag_op A _ q1 q2 a a; rwa [op_self] at this
 
 /-! ## Updates -/
 

@@ -22,10 +22,8 @@ theorem liftRel_eq : liftRel (@Eq α) A B ↔ A = B := by
 
 /-- Require that a separation logic with carrier type `PROP` fulfills all necessary axioms. -/
 class BI (PROP : Type _) extends COFE PROP, BI.BIBase PROP where
-  Equiv P Q := P ⊣⊢ Q
-
   entails_preorder : Preorder Entails
-  equiv_iff {P Q : PROP} : (P ≡ Q) ↔ P ⊣⊢ Q := by simp
+  equiv_iff {P Q : PROP} : (P = Q) ↔ P ⊣⊢ Q
 
   and_ne : OFE.NonExpansive₂ and
   or_ne : OFE.NonExpansive₂ or
@@ -97,7 +95,7 @@ theorem BIBase.Entails.of_eq [BI PROP] {P Q : PROP} (h : P = Q) : P ⊢ Q := h �
 
 theorem BIBase.BiEntails.of_eq [BI PROP] {P Q : PROP} (h : P = Q) : P ⊣⊢ Q := h ▸ .rfl
 
-theorem BIBase.BiEntails.to_eq [BI PROP] [Leibniz PROP] {P Q : PROP} (h : P ⊣⊢ Q) : P = Q := (equiv_iff.mpr h).to_eq
+theorem BIBase.BiEntails.to_eq [BI PROP] {P Q : PROP} (h : P ⊣⊢ Q) : P = Q := equiv_iff.mpr h
 
 theorem BIBase.BiEntails.symm [BI PROP] {P Q : PROP} (h : P ⊣⊢ Q) : Q ⊣⊢ P := ⟨h.2, h.1⟩
 
@@ -109,7 +107,7 @@ theorem BIBase.BiEntails.ofMono [BI PROP1] [BI PROP2] {mod : PROP1 → PROP2}
     ∀ {P Q : PROP1}, P ⊣⊢ Q → mod P ⊣⊢ mod Q :=
   fun h => ⟨mono h.1, mono h.2⟩
 
-theorem BIBase.BiEntails.proper [BI PROP] {a a' b b' : PROP} (ha : a ≡ a') (hb : b ≡ b') : (a ⊣⊢ b ↔ a' ⊣⊢ b') where
+theorem BIBase.BiEntails.proper [BI PROP] {a a' b b' : PROP} (ha : a = a') (hb : b = b') : (a ⊣⊢ b ↔ a' ⊣⊢ b') where
   mp h := equiv_iff.1 (ha.symm.trans (equiv_iff.2 h) |>.trans hb)
   mpr h := equiv_iff.1 (ha.trans (equiv_iff.2 h) |>.trans hb.symm)
 

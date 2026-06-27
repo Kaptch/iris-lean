@@ -26,7 +26,7 @@ namespace BigAndM
 @[simp, rocq_alias big_andM_empty]
 theorem bigAndM_empty {Φ : K → V → PROP} :
     ([∧map] k ↦ x ∈ (∅ : M V), Φ k x) ⊣⊢ True :=
-  equiv_iff.mp <| .of_eq <| bigOpM_empty Φ
+  equiv_iff.mp <| bigOpM_empty Φ
 
 @[rocq_alias big_andM_empty']
 theorem bigAndM_empty_intro {P : PROP} {Φ : K → V → PROP} :
@@ -64,13 +64,13 @@ theorem bigAndM_mono {Φ Ψ : K → V → PROP} {m : M V}
 
 @[rocq_alias big_andM_proper]
 theorem bigAndM_eqv {Φ Ψ : K → V → PROP} {m : M V}
-    (h : ∀ {k x}, get? m k = some x → Φ k x ≡ Ψ k x) :
-    ([∧map] k ↦ x ∈ m, Φ k x) ≡ [∧map] k ↦ x ∈ m, Ψ k x :=
+    (h : ∀ {k x}, get? m k = some x → Φ k x = Ψ k x) :
+    ([∧map] k ↦ x ∈ m, Φ k x) = [∧map] k ↦ x ∈ m, Ψ k x :=
   bigOpM_eqv h
 
 theorem bigAndM_eqv_of_forall_eqv {Φ Ψ : K → V → PROP} {m : M V}
-    (h : ∀ {k x}, Φ k x ≡ Ψ k x) :
-    ([∧map] k ↦ x ∈ m, Φ k x) ≡ [∧map] k ↦ x ∈ m, Ψ k x :=
+    (h : ∀ {k x}, Φ k x = Ψ k x) :
+    ([∧map] k ↦ x ∈ m, Φ k x) = [∧map] k ↦ x ∈ m, Ψ k x :=
   bigOpM_proper_pointwise m h
 
 @[rocq_alias big_andM_ne]
@@ -191,7 +191,7 @@ theorem bigAndM_subseteq {Φ : K → V → PROP} {m₁ m₂ : M V}
 
 @[rocq_alias big_andM_and]
 theorem bigAndM_and_eqv {Φ Ψ : K → V → PROP} {m : M V} :
-    ([∧map] k ↦ x ∈ m, iprop(Φ k x ∧ Ψ k x)) ≡
+    ([∧map] k ↦ x ∈ m, iprop(Φ k x ∧ Ψ k x)) =
       iprop(([∧map] k ↦ x ∈ m, Φ k x) ∧ [∧map] k ↦ x ∈ m, Ψ k x) :=
   bigOpM_op_eqv Φ Ψ m
 
@@ -239,25 +239,25 @@ theorem bigAndM_toList {Φ : K → V → PROP} {m : M V} :
 
 @[rocq_alias big_andM_fmap]
 theorem bigAndM_map {Φ : K → V → PROP} {m : M V} {f : V → V} :
-    ([∧map] k ↦ y ∈ PartialMap.map f m, Φ k y) ≡ [∧map] k ↦ y ∈ m, Φ k (f y) :=
+    ([∧map] k ↦ y ∈ PartialMap.map f m, Φ k y) = [∧map] k ↦ y ∈ m, Φ k (f y) :=
   bigOpM_map_eqv f Φ m
 
 @[rocq_alias big_andM_omap]
 theorem bigAndM_filterMap {Φ : K → V → PROP} {m : M V} {f : V → Option V}
     (hinj : Function.Injective f) :
-    ([∧map] k ↦ y ∈ PartialMap.filterMap f m, Φ k y) ≡
+    ([∧map] k ↦ y ∈ PartialMap.filterMap f m, Φ k y) =
       [∧map] k ↦ y ∈ m, (f y).elim iprop(True) (Φ k) :=
   bigOpM_filterMap_eqv Φ m hinj
 
 @[rocq_alias big_andM_filter']
 theorem bigAndM_filter_cond {Φ : K → V → PROP} {m : M V} (p : K → V → Bool) :
-    ([∧map] k ↦ x ∈ PartialMap.filter p m, Φ k x) ≡
+    ([∧map] k ↦ x ∈ PartialMap.filter p m, Φ k x) =
       [∧map] k ↦ x ∈ m, if p k x then Φ k x else iprop(True) :=
   bigOpM_filter_eqv p Φ m
 
 @[rocq_alias big_andM_filter]
 theorem bigAndM_filter {Φ : K → V → PROP} {m : M V} (p : K → V → Bool) :
-    ([∧map] k ↦ x ∈ PartialMap.filter p m, Φ k x) ≡
+    ([∧map] k ↦ x ∈ PartialMap.filter p m, Φ k x) =
       [∧map] k ↦ x ∈ m, iprop(⌜p k x = true⌝ → Φ k x) :=
   (bigAndM_filter_cond p).trans <| bigOpM_eqv fun {k x} _ => by
     match hp : p k x with
@@ -271,21 +271,21 @@ theorem bigAndM_union [DecidableEq K] {Φ : K → V → PROP} {m₁ m₂ : M V} 
   equiv_iff.mp <| bigOpM_union_eqv Φ m₁ m₂ hdisj
 
 theorem bigAndM_insert_override {Φ : K → V → PROP} {m : M V} {i : K} {x x' : V}
-    (hi : get? m i = some x) (hΦ : Φ i x ≡ Φ i x') :
-    ([∧map] k ↦ v ∈ insert m i x', Φ k v) ≡ ([∧map] k ↦ v ∈ m, Φ k v) :=
+    (hi : get? m i = some x) (hΦ : Φ i x = Φ i x') :
+    ([∧map] k ↦ v ∈ insert m i x', Φ k v) = ([∧map] k ↦ v ∈ m, Φ k v) :=
   bigOpM_insert_override_eqv hi hΦ
 
 @[rocq_alias big_andM_fn_insert]
 theorem bigAndM_fn_insert [DecidableEq K] {B : Type _} {g : K → V → B → PROP} {f : K → B}
     {m : M V} {i : K} {x : V} {b : B} (hi : get? m i = none) :
-    ([∧map] k ↦ y ∈ insert m i x, g k y (if k = i then b else f k)) ≡
+    ([∧map] k ↦ y ∈ insert m i x, g k y (if k = i then b else f k)) =
     iprop(g i x b ∧ [∧map] k ↦ y ∈ m, g k y (f k)) :=
   bigOpM_fn_insert_eqv g f x b hi
 
 @[rocq_alias big_andM_fn_insert']
 theorem bigAndM_fn_insert_cond [DecidableEq K] {f : K → PROP} {m : M V} {i : K} {x : V} {P : PROP}
     (hi : get? m i = none) :
-    ([∧map] k ↦ _v ∈ insert m i x, if k = i then P else f k) ≡
+    ([∧map] k ↦ _v ∈ insert m i x, if k = i then P else f k) =
     iprop(P ∧ [∧map] k ↦ _v ∈ m, f k) :=
   bigOpM_fn_insert_eqv' f x P hi
 

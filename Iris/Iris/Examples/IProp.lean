@@ -136,13 +136,12 @@ def wp {Expr State Value : Type _} [@Ex3WP Expr State Value GF] (e : Expr) (Φ :
   (fixpoint <| @wp_F Expr State Value _ GF _) e Φ
 
 theorem wp_unfold (e : Expr) (Φ : Value → IProp GF) :
-    wp e Φ ≡ iprop(
+    wp e Φ = iprop(
         (∃ v : Value, ⌜@to_value _ State _ _ e = some v⌝ ∗ |==> Φ v) ∨
         ∀ s, @state_interp State _ _ s -∗
           ∃ e' s', ⌜@step _ _ Value _ (e, s) = (e', s') ⌝ ∗
           ▷ |==> (@state_interp _ _ _  s' ∗ wp e' Φ)) := by
-  apply fixpoint_unfold (f := ⟨(@wp_F Expr State Value _ GF _),
-                                @OFE.ne_of_contractive _ _ _ _ (@wp_F Expr State Value _ GF _) _⟩)
+  exact congrFun (congrFun (fixpoint_unfold { f := @wp_F Expr State Value _ GF _ }) e) Φ
 
 /- Now, we can derive some example proof rules. First let's prove a rule for pure deterministic steps: -/
 example (e e' : Expr) Φ (Hstep : ∀ {s : State}, @step _ _ Value _ (e, s) = (e', s)) :

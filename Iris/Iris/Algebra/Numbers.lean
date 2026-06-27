@@ -40,17 +40,21 @@ namespace CommMonoidLike
 
 open Iris Iris.OFE Add Zero One Associative Commutative LawfulLeftIdentity CMRA
 
-variable [OFE α] [Discrete α] [Leibniz α]
+variable [ofe : OFE α] [Discrete α]
 variable [Add α] [Associative (add (α := α))] [Commutative (add (α := α))]
 variable [Zero α] [LawfulLeftIdentity (add (α := α)) zero]
 variable {x y x' y' : α}
 
 scoped instance : CMRA α where
+  Dist := ofe.Dist
+  dist_eqv := ofe.dist_eqv
+  dist_lt := ofe.dist_lt
+  eq_of_dist := ofe.eq_of_dist
   pcore _ := some zero
   op := add
   ValidN _ _ := True
   Valid _ := True
-  op_ne.ne _ _ _ h := by rw [(discrete h).to_eq]
+  op_ne.ne _ _ _ h := by rw [discrete h]
   pcore_ne _ := dist_some ∘ Dist.of_eq
   validN_ne _ _ := .intro
   valid_iff_validN := .symm <| forall_const Nat
@@ -62,8 +66,7 @@ scoped instance : CMRA α where
   pcore_idem := by simp
   pcore_op_mono {_ _} := by
     rintro ⟨rfl⟩ _
-    exists zero
-    rw [left_id (op := add) _]
+    exact ⟨zero, by rw [left_id (op := add)]⟩
   extend _ h := ⟨_, _, discrete h, .rfl, .rfl⟩
 #rocq_ignore natR "Use Nat with scoped CMRA instance"
 #rocq_ignore ZR "Use Int with scoped CMRA instance"
@@ -79,6 +82,7 @@ scoped instance : CMRA α where
 #rocq_ignore Z_validN_instance "Use CMRA instance"
 
 scoped instance : CMRA.Discrete α where
+  discrete_0 := OFE.Discrete.discrete_0
   discrete_valid := id
 #rocq_ignore nat_cmra_discrete "Use scoped Discrete instance"
 #rocq_ignore Z_cmra_discrete "Use scoped Discrete instance"
@@ -86,8 +90,8 @@ scoped instance : CMRA.Discrete α where
 scoped instance : UCMRA α where
   unit := zero
   unit_valid := trivial
-  unit_left_id := pcore_op_left rfl
-  pcore_unit := .symm .rfl
+  unit_left_id := left_id (op := add) _
+  pcore_unit := rfl
 
 #rocq_ignore natUR "Use Nat with scoped UCMRA instance"
 #rocq_ignore ZUR "Use Int with scoped UCMRA instance"
@@ -97,7 +101,7 @@ scoped instance : UCMRA α where
 #rocq_ignore Z_unit_instance "Use UCMRA instance"
 
 scoped instance [LeftCancelAdd α] {a : α} : Cancelable a where
-  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ eq_of_eqv ∘ discrete
+  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ discrete
 #rocq_ignore nat_cancelable "Use scoped Cancelable instance"
 #rocq_ignore Z_cancelable "Use scoped Cancelable instance"
 
@@ -106,7 +110,7 @@ scoped instance [LeftCancelAdd α] {a : α} : Cancelable a where
 theorem op_eq {x y : α} : x • y = x + y := rfl
 
 theorem included_iff {x y : α} : x ≼ y ↔ ∃ z, y = x + z := by
-  refine ⟨fun ⟨z, hz⟩ => ⟨z, leibniz.mp hz⟩, fun ⟨z, hz⟩ => ⟨z, .of_eq hz⟩⟩
+  exact ⟨fun ⟨z, hz⟩ => ⟨z, hz⟩, fun ⟨z, hz⟩ => ⟨z, hz⟩⟩
 
 /-- Sufficient condition for a local update on a LeftCancelAdd structure, such as (ℕ, +) -/
 theorem leftCancelAdd_local_update [LeftCancelAdd α] (h : add x y' = add x' y) :
@@ -132,21 +136,25 @@ namespace OrdCommMonoidLike
 
 open Iris Iris.OFE Add Zero One Associative Commutative LawfulLeftIdentity CMRA IdempotentOp
 
-variable [OFE α] [OFE.Discrete α] [Leibniz α]
+variable [ofe : OFE α] [OFE.Discrete α]
 variable [Add α] [Associative (add (α := α))] [Commutative (add (α := α))]
 variable [IdempotentOp (add (α := α))]
 variable [Zero α]
 variable {x y x' y' : α}
 
 scoped instance : CMRA α where
+  Dist := ofe.Dist
+  dist_eqv := ofe.dist_eqv
+  dist_lt := ofe.dist_lt
+  eq_of_dist := ofe.eq_of_dist
   pcore := some
   op := add
   ValidN _ _ := True
   Valid _ := True
-  op_ne.ne _ _ _ h := by rw [(discrete h).to_eq]
-  pcore_ne {_ y _ _} h := by
+  op_ne.ne _ _ _ h := by rw [discrete h]
+  pcore_ne {_ _ y _} h := by
     rintro ⟨rfl⟩
-    exact ⟨y, congrArg _ <| leibniz.mp (discrete h.symm), .rfl⟩
+    exact ⟨y, rfl, h⟩
   validN_ne _ _ := .intro
   valid_iff_validN := .symm <| forall_const Nat
   validN_succ := (·)
@@ -155,7 +163,7 @@ scoped instance : CMRA α where
   comm {_ _} := by rw [comm (op := add)]
   pcore_op_left {_ _} := by
     rintro ⟨rfl⟩
-    refine .of_eq <| idempotent _
+    exact idempotent _
   pcore_idem := by simp
   pcore_op_mono {a b} := by
     rintro ⟨rfl⟩ z
@@ -188,6 +196,7 @@ scoped instance : CMRA α where
 #rocq_ignore min_nat_validN_instance "Use CMRA instance"
 
 scoped instance : CMRA.Discrete α where
+  discrete_0 := OFE.Discrete.discrete_0
   discrete_valid := id
 #rocq_ignore max_nat_cmra_discrete "Use scoped Discrete instance"
 #rocq_ignore max_Z_cmra_discrete "Use scoped Discrete instance"
@@ -202,15 +211,15 @@ scoped instance (a : α) : CMRA.CoreId a where
 scoped instance [LawfulLeftIdentity (add (α := α)) zero] : UCMRA α where
   unit := zero
   unit_valid := trivial
-  unit_left_id := .of_eq <| left_id _
-  pcore_unit := .symm .rfl
+  unit_left_id := left_id (op := add) _
+  pcore_unit := rfl
 #rocq_ignore max_natUR "Use Nat with scoped UCMRA instance"
 #rocq_ignore max_nat_ucmra_mixin "Not needed"
 #rocq_ignore max_nat_unit_instance "Use UCMRA instance"
 #rocq_ignore max_Z_unit_instance "Use UCMRA instance"
 
 scoped instance [LeftCancelAdd α] {a : α} : Cancelable a where
-  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ eq_of_eqv ∘ discrete
+  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ discrete
 
 omit [Zero α] in
 /-- The CMRA operation is `add` (which is `max`/`min` for max_nat/min_nat/max_Z). -/
@@ -226,18 +235,22 @@ namespace PosCommMonoidLike
 
 open Iris Iris.OFE Add Zero One Associative Commutative LawfulLeftIdentity CMRA IdempotentOp
 
-variable [OFE α] [OFE.Discrete α] [Leibniz α]
+variable [ofe : OFE α] [OFE.Discrete α]
 variable [Add α] [Associative (add (α := α))] [Commutative (add (α := α))]
 variable [IdempotentOp (add (α := α))]
 
 variable {x y x' y' : α}
 
 scoped instance : CMRA α where
+  Dist := ofe.Dist
+  dist_eqv := ofe.dist_eqv
+  dist_lt := ofe.dist_lt
+  eq_of_dist := ofe.eq_of_dist
   pcore _ := none
   op := add
   ValidN _ _ := True
   Valid _ := True
-  op_ne.ne _ _ _ h := by rw [(discrete h).to_eq]
+  op_ne.ne _ _ _ h := by rw [discrete h]
   pcore_ne _ := by rintro ⟨rfl⟩
   validN_ne _ _ := .intro
   valid_iff_validN := .symm <| forall_const Nat
@@ -257,15 +270,16 @@ scoped instance : CMRA α where
 #rocq_ignore pos_validN_instance "Use CMRA instance"
 
 scoped instance : CMRA.Discrete α where
+  discrete_0 := OFE.Discrete.discrete_0
   discrete_valid := id
 #rocq_ignore pos_cmra_discrete "Use Discrete instance"
 
 scoped instance [LeftCancelAdd α] {a : α} : Cancelable a where
-  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ eq_of_eqv ∘ discrete
+  cancelableN {_ _ _} _ := .of_eq ∘ LeftCancelAdd.cancel_left ∘ discrete
 #rocq_ignore pos_cancelable "Use scoped Cancelable instance"
 
 scoped instance [IdentityFree α] {a : α} : CMRA.IdFree a where
-  id_free0_r _ _ h := IdentityFree.id_free (α := α) <| leibniz.mp (discrete h)
+  id_free0_r _ _ h := IdentityFree.id_free (α := α) (discrete h)
 #rocq_ignore pos_id_free "Use scoped IdentityFree instance"
 
 #rocq_ignore pos_op_add "Not needed"

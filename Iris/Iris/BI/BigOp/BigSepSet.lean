@@ -36,9 +36,9 @@ theorem bigSepS_ne {Φ Ψ : A → PROP} {X : S} {n : Nat} (h : ∀ {x}, x ∈ X 
   bigOpS_dist fun hy => h hy
 
 @[rocq_alias big_sepS_proper]
-theorem bigSepS_proper {Φ Ψ : A → PROP} {X : S} (h : ∀ {x}, x ∈ X → Φ x ≡ Ψ x) :
-    ([∗set] x ∈ X, Φ x) ≡ ([∗set] x ∈ X, Ψ x) :=
-  bigOpS_gen_eqv (· ≡ ·) .rfl MonoidOps.op_proper fun hy => h hy
+theorem bigSepS_proper {Φ Ψ : A → PROP} {X : S} (h : ∀ {x}, x ∈ X → Φ x = Ψ x) :
+    ([∗set] x ∈ X, Φ x) = ([∗set] x ∈ X, Ψ x) :=
+  bigOpS_gen_eqv (· = ·) rfl MonoidOps.op_proper fun hy => h hy
 
 theorem bigSepS_eqv {Φ Ψ : A → PROP} {X : S} (h : ∀ {x}, x ∈ X → Φ x ⊣⊢ Ψ x) :
     ([∗set] x ∈ X, Φ x) ⊣⊢ ([∗set] x ∈ X, Ψ x) :=
@@ -61,7 +61,7 @@ theorem bigSepS_elements {Φ : A → PROP} {X : S} :
 
 @[simp, rocq_alias big_sepS_empty]
 theorem bigSepS_empty {Φ : A → PROP} : ([∗set] x ∈ (∅ : S), Φ x) ⊣⊢ emp :=
-  equiv_iff.mp <| .of_eq <| bigOpS_empty
+  equiv_iff.mp <| bigOpS_empty
 
 @[rocq_alias big_sepS_empty']
 theorem bigSepS_empty_intro {P : PROP} [Affine P] {Φ : A → PROP} :
@@ -315,7 +315,7 @@ theorem bigSepS_comm_map {B : Type _} {M : Type _ → Type _} {K : Type _}
   refine bigSepS_elements.trans ?_
   refine (bigSepL_comm _ (FiniteSet.toList X) (LawfulFiniteMap.toList m)).trans ?_
   refine (equiv_iff.mp <| bigOpL_eqv fun _ => equiv_iff.mpr bigSepS_elements.symm).trans <|
-    equiv_iff.mp <| bigOpL_eqv fun _ => .rfl
+    equiv_iff.mp <| bigOpL_eqv fun _ => rfl
 
 @[rocq_alias big_sepS_list_to_set]
 theorem bigSepS_of_list {Φ : A → PROP} {l : List A} (h : l.Nodup) :

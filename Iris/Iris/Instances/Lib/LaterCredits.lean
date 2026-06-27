@@ -37,9 +37,8 @@ scoped instance : LeftIdentity (Add.add (α := Credit)) (0 : Credit) where
 scoped instance : LawfulLeftIdentity (Add.add (α := Credit)) (0 : Credit) := ⟨Nat.zero_add⟩
 scoped instance : LeftCancelAdd Credit := ⟨Nat.add_left_cancel⟩
 
-scoped instance : COFE Credit := COFE.ofDiscrete _ Eq_Equivalence
-scoped instance : Discrete Credit := ⟨congrArg id⟩
-scoped instance : Leibniz Credit := ⟨congrArg id⟩
+scoped instance : COFE Credit := COFE.ofDiscrete _ Eq_Equivalence id
+scoped instance : Discrete Credit := ⟨id⟩
 scoped instance : UCMRA Credit := CommMonoidLike.instUCMRA
 scoped instance : CMRA.Discrete Credit := CommMonoidLike.instDiscrete
 scoped instance {a : Credit} : CMRA.Cancelable a := inferInstance

@@ -52,12 +52,12 @@ theorem bigOrL_mono {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[
   bigOpL_gen_proper (· ⊢ ·) .rfl or_mono (h ·)
 
 @[rocq_alias big_orL_proper]
-theorem bigOrL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x ≡ Ψ k x) :
-    ([∨list] k ↦ x ∈ l, Φ k x) ≡ [∨list] k ↦ x ∈ l, Ψ k x :=
+theorem bigOrL_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, l[k]? = some x → Φ k x = Ψ k x) :
+    ([∨list] k ↦ x ∈ l, Φ k x) = [∨list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv h
 
-theorem bigOrL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x ≡ Ψ k x) :
-    ([∨list] k ↦ x ∈ l, Φ k x) ≡ [∨list] k ↦ x ∈ l, Ψ k x :=
+theorem bigOrL_eqv_of_forall_eqv {Φ Ψ : Nat → A → PROP} {l : List A} (h : ∀ {k x}, Φ k x = Ψ k x) :
+    ([∨list] k ↦ x ∈ l, Φ k x) = [∨list] k ↦ x ∈ l, Ψ k x :=
   bigOpL_eqv_of_forall_eqv h
 
 @[rocq_alias big_orL_ne]
@@ -68,18 +68,18 @@ theorem bigOrL_dist {Φ Ψ : Nat → A → PROP} {l : List A} {n : Nat}
 
 @[rocq_alias big_orL_or]
 theorem bigOrL_or_eqv {Φ Ψ : Nat → A → PROP} {l : List A} :
-    ([∨list] k ↦ x ∈ l, iprop(Φ k x ∨ Ψ k x)) ≡
+    ([∨list] k ↦ x ∈ l, iprop(Φ k x ∨ Ψ k x)) =
       iprop(([∨list] k ↦ x ∈ l, Φ k x) ∨ [∨list] k ↦ x ∈ l, Ψ k x) :=
   bigOpL_op_eqv Φ Ψ l
 
 theorem bigOrL_take_drop {Φ : Nat → A → PROP} {l : List A} {n : Nat} :
-    ([∨list] k ↦ x ∈ l, Φ k x) ≡
+    ([∨list] k ↦ x ∈ l, Φ k x) =
       iprop(([∨list] k ↦ x ∈ (l.take n), Φ k x) ∨ [∨list] k ↦ x ∈ (l.drop n), Φ (n + k) x) :=
   bigOpL_take_drop_eqv Φ l n
 
 @[rocq_alias big_orL_fmap]
 theorem bigOrL_map {B : Type _} (f : A → B) {Φ : Nat → B → PROP} {l : List A} :
-    ([∨list] k ↦ y ∈ (l.map f), Φ k y) ≡ [∨list] k ↦ x ∈ l, Φ k (f x) :=
+    ([∨list] k ↦ y ∈ (l.map f), Φ k y) = [∨list] k ↦ x ∈ l, Φ k (f x) :=
   bigOpL_map_eqv f Φ l
 
 @[rocq_alias big_orL_intro]
@@ -159,7 +159,7 @@ theorem bigOrL_laterN {Φ : Nat → A → PROP} {l : List A} {n : Nat} (hne : l 
   | _ + 1 => (later_congr <| bigOrL_laterN hne).trans <| bigOrL_later hne
 
 theorem bigOrL_perm {Φ : A → PROP} {l₁ l₂ : List A} (hp : l₁.Perm l₂) :
-    ([∨list] x ∈ l₁, Φ x) ≡ [∨list] x ∈ l₂, Φ x :=
+    ([∨list] x ∈ l₁, Φ x) = [∨list] x ∈ l₂, Φ x :=
   bigOpL_eqv_of_perm Φ hp
 
 @[rocq_alias big_orL_submseteq]
@@ -216,7 +216,7 @@ instance bigOrL_timeless_inst {Φ : Nat → A → PROP} {l : List A} [∀ k x, T
 
 @[rocq_alias big_orL_zip_seq]
 theorem bigOrL_zip_seq {Φ : A × Nat → PROP} {n : Nat} {l : List A} :
-    ([∨list] xy ∈ l.zipIdx n, Φ xy) ≡ [∨list] i ↦ x ∈ l, Φ (x, n + i) :=
+    ([∨list] xy ∈ l.zipIdx n, Φ xy) = [∨list] i ↦ x ∈ l, Φ (x, n + i) :=
   bigOpL_zipIdx_eqv Φ n l
 
 end BigOrL
