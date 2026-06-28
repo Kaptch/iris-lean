@@ -98,13 +98,13 @@ notation "◯ " b => frag b
 nonrec instance auth_ne {dq : DFrac} : NonExpansive (auth dq : A → Auth A) :=
   auth_ne
 
-#rocq_ignore auth_auth_proper "Derivable from auth_ne with NonExpansive.eqv"
+#rocq_ignore auth_auth_proper "Derivable from auth_ne with NonExpansive.congr"
 
 @[rocq_alias auth_frag_ne]
 nonrec instance frag_ne : NonExpansive (frag : A → Auth A) :=
   frag_ne
 
-#rocq_ignore auth_frag_proper "Derivable from frag_ne with NonExpansive.eqv"
+#rocq_ignore auth_frag_proper "Derivable from frag_ne with NonExpansive.congr"
 
 @[rocq_alias auth_auth_dist_inj]
 nonrec theorem auth_dist_inj {n : Nat} {dq1 dq2 : DFrac} {a1 a2 : A}
@@ -113,7 +113,7 @@ nonrec theorem auth_dist_inj {n : Nat} {dq1 dq2 : DFrac} {a1 a2 : A}
 
 @[rocq_alias auth_auth_inj]
 theorem auth_inj {dq1 dq2 : DFrac} {a1 a2 : A} (h : (●{dq1} a1) = ●{dq2} a2) :
-    dq1 = dq2 ∧ a1 = a2 := auth_eqv_inj h
+    dq1 = dq2 ∧ a1 = a2 := auth_eq_inj h
 
 @[rocq_alias auth_frag_dist_inj]
 theorem frag_dist_inj {n : Nat} {b1 b2 : A} (h : (◯ b1 : Auth A) ≡{n}≡ ◯ b2) : b1 ≡{n}≡ b2 :=
@@ -121,7 +121,7 @@ theorem frag_dist_inj {n : Nat} {b1 b2 : A} (h : (◯ b1 : Auth A) ≡{n}≡ ◯
 
 @[rocq_alias auth_frag_inj]
 theorem frag_inj {b1 b2 : A} (h : (◯ b1 : Auth A) = ◯ b2) : b1 = b2 :=
-  equiv_dist.mpr fun _ => dist_of_frag_dist h.dist
+  eq_iff_forall_dist.mpr fun _ => dist_of_frag_dist h.dist
 
 @[rocq_alias auth_auth_discrete]
 nonrec instance auth_discrete {dq : DFrac} {a : A} [DiscreteE a] [DiscreteE (unit : A)] :
@@ -135,7 +135,7 @@ nonrec instance frag_discrete {a : A} [DiscreteE a] : DiscreteE (◯ a : Auth A)
 @[rocq_alias auth_auth_dfrac_op]
 nonrec theorem auth_dfrac_op {dq1 dq2 : DFrac} {a : A} :
     (●{dq1 • dq2} a) = (●{dq1} a) • (●{dq2} a) :=
-  auth_op_auth_eqv
+  auth_op_auth_eq
 
 set_option synthInstance.checkSynthOrder false in
 @[rocq_alias auth_auth_dfrac_is_op]
@@ -183,7 +183,7 @@ nonrec instance {a : A} {b : A} [CoreId b] :
 @[rocq_alias auth_frag_is_op]
 instance {a b1 b2 : A} [h : IsOp io1 a io2 b1 io3 b2] :
     IsOp io1 (◯ a : Auth A) io2 (◯ b1) io3 (◯ b2) where
-  is_op := NonExpansive.eqv h.is_op
+  is_op := NonExpansive.congr h.is_op
 
 -- TODO: auth_frag_sep_homomorphism
 
@@ -204,7 +204,7 @@ theorem auth_dfrac_op_invN {n : Nat} {dq1 dq2 : DFrac} {a b : A}
 @[rocq_alias auth_auth_dfrac_op_inv]
 theorem auth_dfrac_op_inv {dq1 dq2 : DFrac} {a b : A}
     (h : ✓ ((●{dq1} a) • ●{dq2} b)) : a = b :=
-  eqv_of_valid_auth h
+  eq_of_valid_auth h
 
 @[rocq_alias auth_auth_dfrac_op_inv_L]
 theorem auth_dfrac_op_inv_L {dq1 dq2 : DFrac} {a b : A}
@@ -414,12 +414,12 @@ theorem auth_update {a b a' b' : A} (hup : (a, b) ~l~> (a', b')) :
 @[rocq_alias auth_update_alloc]
 theorem auth_update_alloc {a a' b' : A} (hup : (a, unit) ~l~> (a', b')) :
     (● a : Auth A) ~~> (● a') • ◯ b' :=
-  Update.equiv_left unit_right_id (auth_update hup)
+  Update.eq_left unit_right_id (auth_update hup)
 
 @[rocq_alias auth_update_dealloc]
 theorem auth_update_dealloc {a b a' : A} (hup : (a, b) ~l~> (a', unit)) :
     ((● a : Auth A) • ◯ b) ~~> ● a' :=
-  Update.equiv_right unit_right_id (auth_update hup)
+  Update.eq_right unit_right_id (auth_update hup)
 
 @[rocq_alias auth_update_auth]
 theorem auth_update_auth {a a' b' : A} (hup : (a, unit) ~l~> (a', b')) :

@@ -25,7 +25,7 @@ instance entails_trans [BI PROP] : Trans (α := PROP) Entails Entails Entails wh
   trans h1 h2 := h1.trans h2
 instance entails_antisymm [BI PROP] : Antisymmetric (α := PROP) BiEntails Entails where
   antisymm h1 h2 := ⟨h1, h2⟩
-#rocq_ignore bi.entails_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.entails_proper "Derivable from _ne with NonExpansive.congr."
 
 instance equiv_trans [BI PROP] : Trans (α := PROP) BiEntails BiEntails BiEntails where
   trans h1 h2 := h1.trans h2
@@ -102,7 +102,7 @@ theorem entails_equiv_right [BI PROP] {P Q R : PROP} (h1 : P ⊢ Q) (h2 : Q ⊣�
 @[rw_mono_rule, rocq_alias bi.and_mono]
 theorem and_mono [BI PROP] {P P' Q Q' : PROP} (h1 : P ⊢ Q) (h2 : P' ⊢ Q') : P ∧ P' ⊢ Q ∧ Q' :=
   and_intro (and_elim_left_trans h1) (and_elim_right_trans h2)
-#rocq_ignore bi.and_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.and_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.and_mono_l]
 theorem and_mono_left [BI PROP] {P P' Q : PROP} (h : P ⊢ P') : P ∧ Q ⊢ P' ∧ Q := and_mono h .rfl
@@ -121,7 +121,7 @@ theorem and_congr_right [BI PROP] {P Q Q' : PROP} (h : Q ⊣⊢ Q') : P ∧ Q �
 @[rw_mono_rule, rocq_alias bi.or_mono]
 theorem or_mono [BI PROP] {P P' Q Q' : PROP} (h1 : P ⊢ Q) (h2 : P' ⊢ Q') : P ∨ P' ⊢ Q ∨ Q' :=
   or_elim (or_intro_left_trans h1) (or_intro_right_trans h2)
-#rocq_ignore bi.or_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.or_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.or_mono_l]
 theorem or_mono_left [BI PROP] {P P' Q : PROP} (h : P ⊢ P') : P ∨ Q ⊢ P' ∨ Q := or_mono h .rfl
@@ -140,7 +140,7 @@ theorem or_congr_right [BI PROP] {P Q Q' : PROP} (h : Q ⊣⊢ Q') : P ∨ Q ⊣
 @[rw_mono_rule, rocq_alias bi.impl_mono]
 theorem imp_mono [BI PROP] {P P' Q Q' : PROP} (h1 : Q ⊢ P) (h2 : P' ⊢ Q') : (P → P') ⊢ Q → Q' :=
   imp_intro <| (and_mono_right h1).trans <| (imp_elim .rfl).trans h2
-#rocq_ignore bi.impl_proper "Derivable from _ne with NonExpansive.eqv"
+#rocq_ignore bi.impl_proper "Derivable from _ne with NonExpansive.congr"
 
 theorem imp_mono_left [BI PROP] {P P' Q : PROP} (h : P' ⊢ P) : (P → Q) ⊢ (P' → Q) := imp_mono h .rfl
 
@@ -176,7 +176,7 @@ theorem forall_elim_trans [BI PROP] {Ψ : α → PROP} {P : PROP} (h : P ⊢ ∀
 @[rw_mono_rule, rocq_alias bi.forall_mono]
 theorem forall_mono [BI PROP] {Φ Ψ : α → PROP} (h : ∀ a, Φ a ⊢ Ψ a) : (∀ a, Φ a) ⊢ ∀ a, Ψ a :=
   forall_intro fun a => (forall_elim a).trans (h a)
-#rocq_ignore bi.forall_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.forall_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule]
 theorem forall_congr [BI PROP] {Φ Ψ : α → PROP} (h : ∀ a, Φ a ⊣⊢ Ψ a) : (∀ a, Φ a) ⊣⊢ ∀ a, Ψ a :=
@@ -202,7 +202,7 @@ theorem exists_elim [BI PROP] {Φ : α → PROP} {Q : PROP} (h : ∀ a, Φ a ⊢
 @[rw_mono_rule, rocq_alias bi.exist_mono]
 theorem exists_mono [BI PROP] {Φ Ψ : α → PROP} (h : ∀ a, Φ a ⊢ Ψ a) : (∃ a, Φ a) ⊢ ∃ a, Ψ a :=
   exists_elim fun a => (h a).trans (exists_intro a)
-#rocq_ignore bi.exist_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.exist_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule]
 theorem exists_congr [BI PROP] {Φ Ψ : α → PROP} (h : ∀ a, Φ a ⊣⊢ Ψ a) : (∃ a, Φ a) ⊣⊢ ∃ a, Ψ a :=
@@ -405,7 +405,7 @@ theorem sep_congr [BI PROP] {P P' Q Q' : PROP} (h1 : P ⊣⊢ Q) (h2 : P' ⊣⊢
     (P ∗ P') ⊣⊢ (Q ∗ Q') := ⟨sep_mono h1.1 h2.1, sep_mono h1.2 h2.2⟩
 #rocq_ignore bi.sep_flip_mono' "Use _mono."
 #rocq_ignore bi.sep_mono' "Use _mono."
-#rocq_ignore bi.sep_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.sep_proper "Derivable from _ne with NonExpansive.congr."
 
 theorem sep_congr_left [BI PROP] {P P' Q : PROP} (h : P ⊣⊢ P') : P ∗ Q ⊣⊢ P' ∗ Q := sep_congr h .rfl
 
@@ -416,7 +416,7 @@ theorem wand_mono [BI PROP] {P P' Q Q' : PROP} (h1 : Q ⊢ P) (h2 : P' ⊢ Q') :
     (P -∗ P') ⊢ Q -∗ Q' := wand_intro <| (sep_mono_right h1).trans <| (wand_elim .rfl).trans h2
 #rocq_ignore bi.wand_flip_mono' "Use _mono."
 #rocq_ignore bi.wand_mono' "Use _mono."
-#rocq_ignore bi.wand_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.wand_proper "Derivable from _ne with NonExpansive.congr."
 
 theorem wand_mono_left [BI PROP] {P P' Q : PROP} (h : P' ⊢ P) : (P -∗ Q) ⊢ P' -∗ Q := wand_mono h .rfl
 
@@ -606,7 +606,7 @@ theorem wandIff_refl [BI PROP] {P : PROP} : ⊢ P ∗-∗ P := and_intro wand_rf
 @[rocq_alias bi.iff_ne]
 instance iff_ne [BI PROP] : OFE.NonExpansive₂ (BIBase.iff (PROP := PROP)) :=
   ⟨fun {_ _ _} h₁ {_ _} h₂ => and_ne.ne (imp_ne.ne h₁ h₂) (imp_ne.ne h₂ h₁)⟩
-#rocq_ignore bi.iff_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.iff_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.iff_refl]
 theorem iff_refl_alias [BI PROP] {Q P : PROP} : Q ⊢ iprop(P ↔ P) :=
@@ -615,7 +615,7 @@ theorem iff_refl_alias [BI PROP] {Q P : PROP} : Q ⊢ iprop(P ↔ P) :=
 @[rocq_alias bi.wand_iff_ne]
 instance wandIff_ne [BI PROP] : OFE.NonExpansive₂ (wandIff (PROP := PROP)) :=
   ⟨fun {_ _ _} h₁ {_ _} h₂ => and_ne.ne (wand_ne.ne h₁ h₂) (wand_ne.ne h₂ h₁)⟩
-#rocq_ignore bi.wand_iff_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.wand_iff_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.wand_entails]
 theorem wand_entails [BI PROP] {P Q : PROP} (h : ⊢ P -∗ Q) : P ⊢ Q :=
@@ -652,7 +652,7 @@ theorem pure_elim [BI PROP] (φ : Prop) {Q R : PROP} (h1 : Q ⊢ ⌜φ⌝) (h2 :
 theorem pure_mono [BI PROP] {φ1 φ2 : Prop} (h : φ1 → φ2) : ⌜φ1⌝ ⊢ (⌜φ2⌝ : PROP) :=
   pure_elim' <| pure_intro ∘ h
 #rocq_ignore bi.pure_mono' "Use _mono."
-#rocq_ignore bi.pure_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.pure_proper "Derivable from _ne with NonExpansive.congr."
 
 theorem pure_congr [BI PROP] {φ1 φ2 : Prop} (h : φ1 ↔ φ2) : ⌜φ1⌝ ⊣⊢ (⌜φ2⌝ : PROP) :=
   ⟨pure_mono h.1,pure_mono h.2⟩
@@ -727,7 +727,7 @@ theorem affinely_ne [BI PROP] : OFE.NonExpansive (@affinely PROP _) where
   ne _ _ _ h := and_ne.1 .rfl h
 #rocq_ignore bi.affinely_flip_mono' "Use _mono."
 #rocq_ignore bi.affinely_mono' "Use _mono."
-#rocq_ignore bi.affinely_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.affinely_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule]
 theorem affinely_congr [BI PROP] {P P' : PROP} (h : P ⊣⊢ P') :
@@ -812,7 +812,7 @@ theorem affinely_and_left_right [BI PROP] {P Q : PROP} : <affine> P ∧ Q ⊣⊢
 @[rocq_alias bi.emp_affine]
 instance emp_affine [BI PROP] : Affine (PROP := PROP) iprop(emp) where
   affine := .rfl
-#rocq_ignore bi.Affine_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.Affine_proper "Derivable from _ne with NonExpansive.congr."
 
 theorem affine_mono [BI PROP] {P Q : PROP} (h : P ⊢ Q) [Affine Q] : Affine P where
   affine := h.trans affine
@@ -860,7 +860,7 @@ theorem absorbingly_ne [BI PROP] : OFE.NonExpansive (@absorbingly PROP _) where
   ne _ _ _ h := sep_ne.1 .rfl h
 #rocq_ignore bi.absorbingly_flip_mono' "Use _mono."
 #rocq_ignore bi.absorbingly_mono' "Use _mono."
-#rocq_ignore bi.absorbingly_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.absorbingly_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule]
 theorem absorbingly_congr [BI PROP] {P P' : PROP} (h : P ⊣⊢ P') :
@@ -879,7 +879,7 @@ theorem absorbingly_idem [BI PROP] {P : PROP} : <absorb> <absorb> P ⊣⊢ <abso
 @[rocq_alias bi.absorbingly_absorbing]
 instance absorbingly_absorbing [BI PROP] (P : PROP) : Absorbing iprop(<absorb> P) where
   absorbing := absorbingly_idem.1
-#rocq_ignore bi.Absorbing_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.Absorbing_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.absorbingly_pure]
 theorem absorbingly_pure {φ : Prop} [BI PROP] : <absorb> ⌜φ⌝ ⊣⊢ (⌜φ⌝ : PROP) :=
@@ -1096,12 +1096,12 @@ theorem persistently_congr [BI PROP] {P P' : PROP} (h : P ⊣⊢ P') :
     <pers> P ⊣⊢ <pers> P' := ⟨persistently_mono h.1, persistently_mono h.2⟩
 #rocq_ignore bi.persistently_flip_mono' "Use _mono."
 #rocq_ignore bi.persistently_mono' "Use _mono."
-#rocq_ignore bi.persistently_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.persistently_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.persistently_persistent]
 instance persistently_persistent [BI PROP] (P : PROP) : Persistent iprop(<pers> P) where
   persistent := persistently_idem_2
-#rocq_ignore bi.Persistent_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.Persistent_proper "Derivable from _ne with NonExpansive.congr."
 
 theorem persistently_absorb_right [BI PROP] {P Q : PROP} : P ∗ <pers> Q ⊢ <pers> Q :=
   sep_comm.1.trans persistently_absorb_l
@@ -1380,7 +1380,7 @@ theorem intuitionistically_ne [BI PROP] : OFE.NonExpansive (@intuitionistically 
   ne _ _ _ h := affinely_ne.1 (persistently_ne.1 h)
 #rocq_ignore bi.intuitionistically_flip_mono' "Use _mono."
 #rocq_ignore bi.intuitionistically_mono' "Use _mono."
-#rocq_ignore bi.intuitionistically_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.intuitionistically_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule]
 theorem intuitionistically_congr [BI PROP] {P Q : PROP} (h : P ⊣⊢ Q) : □ P ⊣⊢ □ Q :=
@@ -1546,7 +1546,7 @@ theorem affinelyIf_ne {p : Bool} [BI PROP] : OFE.NonExpansive (affinelyIf (PROP 
   | false => OFE.id_ne
 #rocq_ignore bi.affinely_if_flip_mono' "Use _mono."
 #rocq_ignore bi.affinely_if_mono' "Use _mono."
-#rocq_ignore bi.affinely_if_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.affinely_if_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule, rocq_alias bi.affinely_if_mono]
 theorem affinelyIf_mono {p : Bool} [BI PROP] {P Q : PROP}
@@ -1686,7 +1686,7 @@ theorem absorbinglyIf_ne {p : Bool} [BI PROP] : OFE.NonExpansive (absorbinglyIf 
   | false => OFE.id_ne
 #rocq_ignore bi.absorbingly_if_flip_mono' "Use _mono."
 #rocq_ignore bi.absorbingly_if_mono' "Use _mono."
-#rocq_ignore bi.absorbingly_if_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.absorbingly_if_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule, rocq_alias bi.absorbingly_if_mono]
 theorem absorbinglyIf_mono {p : Bool} [BI PROP] {P Q : PROP} (h : P ⊢ Q) :
@@ -1830,7 +1830,7 @@ theorem persistentlyIf_ne {p : Bool} [BI PROP] :
   | false => OFE.id_ne
 #rocq_ignore bi.persistently_if_flip_mono' "Use _mono."
 #rocq_ignore bi.persistently_if_mono' "Use _mono."
-#rocq_ignore bi.persistently_if_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.persistently_if_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule, rocq_alias bi.persistently_if_mono]
 theorem persistentlyIf_mono {p : Bool} [BI PROP] {P Q : PROP} (h : P ⊢ Q) :
@@ -1931,7 +1931,7 @@ theorem intuitionisticallyIf_ne {p : Bool} [BI PROP] :
   | false => OFE.id_ne
 #rocq_ignore bi.intuitionistically_if_flip_mono' "Use _mono."
 #rocq_ignore bi.intuitionistically_if_mono' "Use _mono."
-#rocq_ignore bi.intuitionistically_if_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.intuitionistically_if_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rw_mono_rule, rocq_alias bi.intuitionistically_if_mono]
 theorem intuitionisticallyIf_mono {p : Bool} [BI PROP] {P Q : PROP} (h : P ⊢ Q) : □?p P ⊢ □?p Q :=
@@ -2186,7 +2186,7 @@ theorem LimitPreserving.entails [BI PROP] [COFE A] (Φ Ψ : A → PROP) [Φne : 
     }
     refine fun c h' => ?_
     refine equiv_iff.1 ?_
-    refine LimitPreserving.equiv f g _ ?_
+    refine LimitPreserving.eq f g _ ?_
     exact (equiv_iff.mpr <| h' ·)
 
 @[rocq_alias bi.limit_preserving_Persistent]
@@ -2230,7 +2230,7 @@ theorem iter_modal_mono [BI PROP] (M : PROP → PROP) (n : Nat) {P Q : PROP}
 
 @[rocq_alias bi.bi_emp_valid_mono]
 theorem bi_emp_valid_mono [BI PROP] {P Q : PROP} (h : P ⊢ Q) : (⊢ P) → ⊢ Q := (·.trans h)
-#rocq_ignore bi.bi_emp_valid_proper "Derivable from _ne with NonExpansive.eqv."
+#rocq_ignore bi.bi_emp_valid_proper "Derivable from _ne with NonExpansive.congr."
 
 @[rocq_alias bi.bi_emp_valid_flip_mono]
 theorem bi_emp_valid_flip_mono [BI PROP] {P Q : PROP} (h : P ⊣⊢ Q) : (⊢ P) ↔ ⊢ Q :=

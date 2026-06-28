@@ -664,7 +664,7 @@ theorem get?_union_none {m₁ m₂ : M V} {i : K} :
   rw [get?_union]
   cases h1 : get? m₁ i <;> cases h2 : get? m₂ i <;> simp [Option.orElse]
 
-theorem union_equiv {m₁ m₁' m₂ m₂' : M V}
+theorem union_eq {m₁ m₁' m₂ m₂' : M V}
     (h₁ : m₁ = m₁') (h₂ : m₂ = m₂') : union m₁ m₂ = union m₁' m₂' := by
   rw [h₁, h₂]
 
@@ -707,7 +707,7 @@ theorem map_empty {f : V → V'} : PartialMap.map f (∅ : M V) = (∅ : M V') :
   rw [get?_map, get?_empty, get?_empty]
   rfl
 
-theorem map_equiv {f : V → V'} {m₁ m₂ : M V} (h : m₁ = m₂) :
+theorem map_eq {f : V → V'} {m₁ m₂ : M V} (h : m₁ = m₂) :
     PartialMap.map f m₁ = PartialMap.map f m₂ := by
   rw [h]
 

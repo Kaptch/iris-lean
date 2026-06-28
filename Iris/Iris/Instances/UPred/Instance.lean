@@ -675,7 +675,7 @@ theorem ownM_op (m1 m2 : M) : ownM (m1 • m2) ⊣⊢ ownM m1 ∗ ownM m2 := by
       _     ≡{n}≡ (m1 • m2) • (w2 • w1) := assoc.dist
       _     ≡{n}≡ (m1 • m2) • (w1 • w2) := comm.dist.op_r
 
-theorem ownM_eqv {m1 m2 : M} (H : m1 = m2) : ownM m1 ⊣⊢ ownM m2 :=
+theorem ownM_eq {m1 m2 : M} (H : m1 = m2) : ownM m1 ⊣⊢ ownM m2 :=
   ⟨fun _ _ => (incN_iff_left H.dist).mp, fun _ _ => (incN_iff_left H.dist).mpr⟩
 
 theorem ownM_always_invalid_elim (m : M) (H : ∀ n, ¬✓{n} m) : internalCmraValid m ⊢@{UPred M} False :=
@@ -697,7 +697,7 @@ instance {a : M} : Persistent (ownM (core a)) where
     refine .trans (persistently_ownM_core _) ?_
     refine persistently_mono ?_
     refine equiv_iff.mp ?_ |>.mp
-    refine OFE.NonExpansive.eqv ?_
+    refine OFE.NonExpansive.congr ?_
     exact core_idem a
 
 @[rocq_alias uPred.bupd_ownM_updateP, rocq_alias uPred_primitive.bupd_ownM_updateP]
@@ -730,7 +730,7 @@ theorem later_ownM (a : M) : ▷ ownM a ⊢ ∃ b, ownM b ∧ ▷ <si_pure> (SiP
   | n+1, x, ⟨y, hx⟩ => by
     let ⟨a', y', hx', ha', hy'⟩ := extend (validN_succ x.property) hx
     refine ⟨iprop(ownM a' ∧ ▷ <si_pure> (SiProp.internalEq a a')), ⟨a', rfl⟩, ?_, ?_⟩
-    · exact (incN_iff_right (OFE.equiv_dist.mp hx' (n + 1))).mpr (incN_op_left (n + 1) a' y')
+    · exact (incN_iff_right (OFE.eq_iff_forall_dist.mp hx' (n + 1))).mpr (incN_op_left (n + 1) a' y')
     · exact OFE.Dist.symm ha'
 
 theorem pure_soundness : iprop(True ⊢ (⌜P⌝ : UPred M)) → P :=
@@ -751,7 +751,7 @@ theorem intuitionistically_ownM (a : M) [CoreId a] : □ ownM a ⊣⊢ ownM a :=
   refine ⟨intuitionistically_elim, ?_⟩
   refine (intuitionistically_ownM_core a).trans ?_
   refine intuitionistically_mono ?_
-  exact (ownM_eqv (core_eqv_self a).symm).mpr
+  exact (ownM_eq (core_eq_self a).symm).mpr
 
 @[rocq_alias uPred.ownM_invalid]
 theorem ownM_invalid (a : M) (hnv : ¬ ✓{0} a) : ownM a ⊢ False :=
@@ -782,7 +782,7 @@ instance ownM_timeless (a : M) [OFE.DiscreteE a] : BI.Timeless (ownM a) where
 instance ownM_persistent (a : M) [CoreId a] : Persistent (ownM a) where
   persistent := by
     refine (persistently_ownM_core a).trans ?_
-    exact persistently_mono (ownM_eqv (core_eqv_self a)).mp
+    exact persistently_mono (ownM_eq (core_eq_self a)).mp
 
 @[rocq_alias uPred.bupd_soundness]
 theorem bupd_soundness {P : UPred M} [Plain P] : (⊢ |==> P) → ⊢ P :=

@@ -46,7 +46,7 @@ variable {M : Type u} [OFE M] {unit : M} {op : M → M → M}
 /-- The operation is proper with respect to equivalence. -/
 @[rocq_alias monoid_proper]
 theorem op_proper [MonoidOps op unit] (ha : a = a') (hb : b = b') :
-    op a b = op a' b' := NonExpansive₂.eqv ha hb
+    op a b = op a' b' := NonExpansive₂.congr ha hb
 
 /-- Right identity follows from commutativity and left identity. -/
 @[simp, rocq_alias monoid_right_id]
@@ -107,10 +107,10 @@ class WeakMonoidHomomorphism {M₁ : Type u} {M₂ : Type v} [OFE M₁] [OFE M�
   map_op : ∀ {x y}, R (f (op₁ x y)) (op₂ (f x) (f y))
 
 @[rocq_alias weak_monoid_homomorphism_proper]
-theorem weak_monoid_homomorphism_equiv [ OFE M₁] [OFE M₂]
+theorem weak_monoid_homomorphism_eq [ OFE M₁] [OFE M₂]
   [MonoidOps op₁ unit₁] [MonoidOps op₂ unit₂] (f : M₁ → M₂)
   [h : WeakMonoidHomomorphism op₁ op₂ unit₁ unit₂ R f] {x y} :
-    (x = y) → f x = f y := fun e => h.map_ne.eqv e
+    (x = y) → f x = f y := fun e => h.map_ne.congr e
 
 /-- A monoid homomorphism preserves both the operation and the unit. -/
 @[rocq_alias MonoidHomomorphism]

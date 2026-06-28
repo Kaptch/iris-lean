@@ -68,13 +68,13 @@ instance [OFE α] [OFE β] : OFE (Csum α β) where
 instance [OFE α] [OFE β] : NonExpansive (inl (α := α) (β := β)) where
   ne _ _ _ := id
 
-#rocq_ignore Cinl_proper "Derivable using NonExpansive.eqv"
+#rocq_ignore Cinl_proper "Derivable using NonExpansive.congr"
 
 @[rocq_alias Cinr_ne]
 instance [OFE α] [OFE β] : NonExpansive (inr (α := α) (β := β)) where
   ne _ _ _ := id
 
-#rocq_ignore Cinr_proper "Derivable using NonExpansive.eqv"
+#rocq_ignore Cinr_proper "Derivable using NonExpansive.congr"
 
 @[rocq_alias Cinl_inj]
 theorem inl_inj [OFE α] [OFE β] {a a' : α} (h : (inl (β := β) a) = inl a') : a = a' :=

@@ -203,7 +203,7 @@ open BIUpdate
 instance bupd_ne : OFE.NonExpansive (BUpd.bupd (PROP := PROP)) := BIUpdate.bupd_ne
 #rocq_ignore bupd_mono' "Use bupd_mono."
 #rocq_ignore bupd_flip_mono' "Use bupd_mono."
-#rocq_ignore bupd_proper "Derivable from bupd_ne with NonExpansive.eqv"
+#rocq_ignore bupd_proper "Derivable from bupd_ne with NonExpansive.congr"
 
 @[rocq_alias bupd_intro]
 theorem bupd_intro {P : PROP} : P ⊢ |==> P := intro
@@ -493,7 +493,7 @@ theorem BigSepL2.bigSepL2_fupd {A B : Type _} E (Φ : Nat → A → B → PROP) 
 
 #rocq_ignore fupd_mono' "Use BIFUpdate.mono."
 #rocq_ignore fupd_flip_mono' "Use BIFUpdate.mono."
-#rocq_ignore fupd_proper "Derivable from BIFUpdate.ne with NonExpansive.eqv"
+#rocq_ignore fupd_proper "Derivable from BIFUpdate.ne with NonExpansive.congr"
 
 end FUpdLaws
 

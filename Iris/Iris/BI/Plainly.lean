@@ -359,10 +359,10 @@ instance plainly_if_absorbing (P : PROP) [Absorbing P] p : Absorbing iprop(■?p
 
 #rocq_ignore plainly_mono' "Use plainly_mono."
 #rocq_ignore plainly_flip_mono' "Use plainly_mono."
-#rocq_ignore plainly_proper "Derivable from plainly_ne with NonExpansive.eqv"
+#rocq_ignore plainly_proper "Derivable from plainly_ne with NonExpansive.congr"
 #rocq_ignore plainly_if_mono' "Use plainly_if_mono."
 #rocq_ignore plainly_if_flip_mono' "Use plainly_if_mono."
-#rocq_ignore plainly_if_proper "Derivable from plainly_if_ne with NonExpansive.eqv"
+#rocq_ignore plainly_if_proper "Derivable from plainly_if_ne with NonExpansive.congr"
 
 end PlainlyLaws
 
@@ -433,7 +433,7 @@ instance plainly_sep_weak_homomorphism [BIPositive PROP][BIAffine PROP] :
   rel_refl := .rfl
   rel_trans := .trans
   rel_proper := BIBase.BiEntails.proper
-  op_proper aa' bb' := equiv_iff.1 (sep_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
+  op_proper aa' bb' := equiv_iff.1 (sep_ne.congr (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_sep
 
@@ -443,7 +443,7 @@ instance plainly_and_weak_homomorphism :
   rel_refl := .rfl
   rel_trans := .trans
   rel_proper := BIBase.BiEntails.proper
-  op_proper aa' bb' := equiv_iff.1 (and_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
+  op_proper aa' bb' := equiv_iff.1 (and_ne.congr (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_and
 
@@ -453,7 +453,7 @@ instance plainly_or_weak_homomorphism [SbiEmpValidExist PROP] :
   rel_refl := .rfl
   rel_trans := .trans
   rel_proper := BIBase.BiEntails.proper
-  op_proper aa' bb' := equiv_iff.1 (or_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
+  op_proper aa' bb' := equiv_iff.1 (or_ne.congr (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_or
 
@@ -693,13 +693,13 @@ instance bigSepM_plain {K} [DecidableEq K] {M A} [ι : LawfulFiniteMap M K] (Φ 
     case hins k v m get?_m_k IH=>
       calc iprop([∗map] k ↦ x ∈ Std.insert m k v, Φ k x)
         _ ⊣⊢ Φ k v ∗ [∗map] k ↦ x ∈  m, Φ k x :=
-            BI.equiv_iff.1 (Algebra.BigOpM.bigOpM_insert_eqv _ _ get?_m_k)
+            BI.equiv_iff.1 (Algebra.BigOpM.bigOpM_insert_eq _ _ get?_m_k)
         _  ⊢ ■ Φ k v ∗ ■ [∗map] k ↦ x ∈  m, Φ k x :=
           sep_mono (h k v |>.plain) IH
         _  ⊢ ■ (Φ k v ∗ [∗map] k ↦ x ∈  m, Φ k x) := plainly_sep_2
         _ ⊣⊢ ■ [∗map] k ↦ x ∈ Std.insert m k v, Φ k x :=
           .ofMono plainly_mono <|
-            BI.equiv_iff.1 (Algebra.BigOpM.bigOpM_insert_eqv _ _ get?_m_k) |>.symm
+            BI.equiv_iff.1 (Algebra.BigOpM.bigOpM_insert_eq _ _ get?_m_k) |>.symm
 
 open Algebra in
 @[rocq_alias big_sepS_empty_plain]

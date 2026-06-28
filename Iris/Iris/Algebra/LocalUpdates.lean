@@ -26,15 +26,15 @@ variable [CMRA α]
 
 theorem LocalUpdate.id (x : α × α) : x ~l~> x := fun _ _ vx e => ⟨vx, e⟩
 
-theorem LocalUpdate.equiv_left {x y : α × α} (z : α × α) (h : x = y) : x ~l~> z → y ~l~> z := by
+theorem LocalUpdate.eq_left {x y : α × α} (z : α × α) (h : x = y) : x ~l~> z → y ~l~> z := by
   intro u n mw v e
-  refine u n mw ((OFE.Dist.validN (OFE.equiv_fst h).dist.symm).mp v) ?_
+  refine u n mw ((OFE.Dist.validN (congrArg Prod.fst h).dist.symm).mp v) ?_
   calc
-    x.fst ≡{n}≡ y.fst       := (OFE.equiv_fst h).dist
+    x.fst ≡{n}≡ y.fst       := (congrArg Prod.fst h).dist
     _     ≡{n}≡ y.snd •? mw := e
-    _     ≡{n}≡ x.snd •? mw := CMRA.opM_left_dist mw (OFE.equiv_snd h).dist.symm
+    _     ≡{n}≡ x.snd •? mw := CMRA.opM_left_dist mw (congrArg Prod.snd h).dist.symm
 
-theorem LocalUpdate.equiv_right (x : α × α) {y z : α × α} (h : y = z) : x ~l~> y → x ~l~> z := by
+theorem LocalUpdate.eq_right (x : α × α) {y z : α × α} (h : y = z) : x ~l~> y → x ~l~> z := by
   intro u n mw v e
   let ⟨vy, e⟩ := u n mw v e
   refine ⟨h.dist.1.validN.mp vy, ?_⟩
@@ -44,9 +44,9 @@ theorem LocalUpdate.equiv_right (x : α × α) {y z : α × α} (h : y = z) : x 
     _     ≡{n}≡ z.snd •? mw := h.dist.2.opM .rfl
 
 @[rocq_alias local_update_proper]
-theorem LocalUpdate.equiv {x x' : α × α} {y y' : α × α} (h1 : x = x') (h2 : y = y') : x ~l~> y ↔ x' ~l~> y' :=
-  ⟨fun u => equiv_right _ h2 (equiv_left _ h1 u),
-   fun u => equiv_right _ h2.symm (equiv_left _ h1.symm u)⟩
+theorem LocalUpdate.congr {x x' : α × α} {y y' : α × α} (h1 : x = x') (h2 : y = y') : x ~l~> y ↔ x' ~l~> y' :=
+  ⟨fun u => eq_right _ h2 (eq_left _ h1 u),
+   fun u => eq_right _ h2.symm (eq_left _ h1.symm u)⟩
 
 @[rocq_alias exclusive_local_update]
 theorem LocalUpdate.exclusive [CMRA.Exclusive y] {x x' : α}
@@ -169,7 +169,7 @@ theorem local_update_unital_discrete [CMRA.Discrete α] (x y x' y' : α) :
 @[rocq_alias cancel_local_update_unit]
 theorem cancel_local_update_unit (x y : α) [CMRA.Cancelable x] : (x • y, x) ~l~> (y, CMRA.unit) :=
   have e : (x • y, x • CMRA.unit) = (x • y, x) := Prod.ext rfl CMRA.unit_right_id
-  .equiv_left _ e (.cancel x y CMRA.unit)
+  .eq_left _ e (.cancel x y CMRA.unit)
 
 /-- Necessary and sufficient condition for a local update on a unital discrete leibniz CMRA
   with trivial validity predicate -/

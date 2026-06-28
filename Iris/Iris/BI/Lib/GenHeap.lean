@@ -211,7 +211,7 @@ theorem metaToken_union_1 {l : L} {E1 E2 : CoPset} (he : E1 ## E2) :
   unfold metaToken
   iintro ⟨%γm, #Hγm, Hm⟩
   -- TODO: why do we need to destruct in a second step?
-  icases (iOwn_ne.eqv (ReservationMap.token_union he).symm) $$ Hm with Hm
+  icases (iOwn_ne.congr (ReservationMap.token_union he).symm) $$ Hm with Hm
   icases Hm with ⟨Hm1, Hm2⟩
   isplitl [Hm1]
   · iexists γm
@@ -230,7 +230,7 @@ theorem metaToken_union_2 {l : L} {E1 E2 : CoPset} :
   have hdisj : E1 ## E2 := ReservationMap.valid_token_op_iff_disj.mp Hvalid
   iexists γm1
   iframe Hγm1
-  iapply (equiv_iff.mp (iOwn_ne.eqv (ReservationMap.token_union hdisj))).mpr
+  iapply (equiv_iff.mp (iOwn_ne.congr (ReservationMap.token_union hdisj))).mpr
   iapply iOwn_op
   iframe
 
@@ -288,8 +288,8 @@ theorem meta_agree {A : Type _} [Pos.Countable A] {l : L} {N : Namespace} {x1 x2
   icombine Hm1 Hm2 gives %Hvalid
   ipureintro
   rw [valid_iff (ReservationMap.singleton_op _ _ _).symm
-    , ReservationMap.valid_singleton, toAgree_op_valid_iff_eq] at Hvalid
-  exact Pos.encode_inj (LeibnizO.eqv_inj Hvalid)
+    , ReservationMap.valid_singleton, Agree.toAgree_op_valid_iff_eq] at Hvalid
+  exact Pos.encode_inj (LeibnizO.eq_inj Hvalid)
 
 @[rocq_alias meta_set]
 theorem meta_set {A : Type _} [Pos.Countable A] {l : L} {E : CoPset} {N : Namespace} (x : A)
@@ -353,7 +353,7 @@ section updateLemmas
 
 /-- The state interpretation transports along a pointwise equivalence of
 the value heap. -/
-theorem genHeapInterp_eqv {σ₁ σ₂ : H V} (h : σ₁ = σ₂) :
+theorem genHeapInterp_eq {σ₁ σ₂ : H V} (h : σ₁ = σ₂) :
     genHeapInterp (GF := GF) σ₁ ⊢ genHeapInterp σ₂ := h ▸ .rfl
 
 @[rocq_alias gen_heap_alloc]
@@ -392,7 +392,7 @@ theorem genHeap_alloc_big [DecidableEq L] (σ' σ : H V) (Hdisj : σ' ##ₘ σ) 
     iintro Hσ
     imodintro
     isplitl [Hσ]
-    · iapply genHeapInterp_eqv LawfulPartialMap.union_empty_left.symm $$ Hσ
+    · iapply genHeapInterp_eq LawfulPartialMap.union_empty_left.symm $$ Hσ
     isplit <;> (iapply BigSepM.bigSepM_empty; itrivial)
   | hins l v σ'' Hl IH =>
     intro σ Hdisj
@@ -404,7 +404,7 @@ theorem genHeap_alloc_big [DecidableEq L] (σ' σ : H V) (Hdisj : σ' ##ₘ σ) 
     imod genHeap_alloc Hunion_l $$ Hint with ⟨Hint', Hl_pts, Hl_tok⟩
     imodintro
     isplitl [Hint']
-    · iapply genHeapInterp_eqv LawfulPartialMap.union_insert_left $$ Hint'
+    · iapply genHeapInterp_eq LawfulPartialMap.union_insert_left $$ Hint'
     isplitl [Hl_pts Hpts]
     · iapply (BigSepM.bigSepM_insert Hl) $$ [$Hpts $Hl_pts]
     iapply (BigSepM.bigSepM_insert (Φ := fun l _ => iprop(metaToken l ⊤)) Hl) $$ [$Hl_tok $Htok]
@@ -471,7 +471,7 @@ theorem genHeap_init_names [DecidableEq L] [genHeapPreS L V GF H] (σ : H V) :
   imodintro
   iexists γh, γm
   iframe Hpts Htok
-  iapply genHeapInterp_eqv LawfulPartialMap.union_empty_right $$ Hinterp
+  iapply genHeapInterp_eq LawfulPartialMap.union_empty_right $$ Hinterp
 
 /-- Initialize `genHeapGS` from a `genHeapPreS`, hiding the freshly allocated
 ghost names. -/

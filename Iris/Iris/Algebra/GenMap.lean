@@ -102,7 +102,7 @@ instance instOFE_GenMap : OFE (GenMap β) where
   dist_eqv.symm := Dist.symm
   dist_eqv.trans := Dist.trans
   dist_lt := Dist.lt
-  eq_of_dist {x y} h := GenMap.ext (eq_of_dist fun n => h n)
+  eq_of_dist {_ _} h := GenMap.ext (eq_of_dist fun n => h n)
 end OFE
 
 theorem GenMap.singleton_discreteE {v : β} [OFE β] [DiscreteE v] :
@@ -445,7 +445,7 @@ instance instURFunctor_GenMapOF (F : COFE.OFunctorPre) [RFunctor F] :
       have Hop := @(URFunctor.map (F := OptionOF F) f g).op (z.car γ) (x.car γ)
       simp only [Option.map, CMRA.op, optionOp, URFunctor.map] at Hop ⊢
       cases h : z.car γ <;> cases h' : x.car γ <;>
-        simp_all [OFunctor.map, optionMap, Option.Forall₂]
+        simp_all [OFunctor.map, optionMap]
   }
   map_ne.ne := OFunctor.map_ne.ne
   map_id := OFunctor.map_id

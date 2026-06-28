@@ -34,7 +34,7 @@ instance instInternalEq_ne (A : Type _) [OFE A] :
     NonExpansive₂ (internalEq (PROP := PROP) (A := A)) where
   ne _ _ _ h₁ _ _ h₂ := Sbi.siPure_ne.ne (SiProp.instNonExpansive₂InternalEq.ne h₁ h₂)
 
-#rocq_ignore internal_eq_proper "Derivable from internal_eq_ne with NonExpansive.eqv"
+#rocq_ignore internal_eq_proper "Derivable from internal_eq_ne with NonExpansive.congr"
 
 theorem ne_l {A : Type _} [OFE A] (a : A) :
     NonExpansive (internalEq (PROP := PROP) · a) :=
@@ -51,7 +51,7 @@ theorem refl {A : Type _} [OFE A] {P : PROP} {a : A} : P ⊢ internalEq a a :=
 @[rocq_alias equiv_internal_eq]
 theorem of_equiv {A : Type _} [OFE A] {P : PROP} {a b : A} (h : a = b) :
     P ⊢ internalEq a b :=
-  refl.trans (equiv_iff.mp (NonExpansive₂.eqv rfl h)).1
+  refl.trans (equiv_iff.mp (NonExpansive₂.congr rfl h)).1
 
 @[rocq_alias pure_internal_eq]
 theorem of_pure {A : Type _} [OFE A] {x y : A} : ⌜x = y⌝ ⊢ internalEq (PROP := PROP) x y :=

@@ -103,7 +103,7 @@ instance instCMRAQp : CMRA Qp where
 @[simp, grind =] theorem Qp.lt_iff {x y : Qp} : x < y ↔ x.val < y.val := Iff.rfl
 @[simp] theorem Qp.ext_iff {x y : Qp} : x = y ↔ x.val = y.val := Subtype.ext_iff
 @[simp] theorem Qp.dist_iff {n} {x y : Qp} : x ≡{n}≡ y ↔ x.val = y.val := Subtype.ext_iff
-@[simp] theorem Qp.equiv_iff {x y : Qp} : x = y ↔ x.val = y.val := Subtype.ext_iff
+@[simp] theorem Qp.eq_iff {x y : Qp} : x = y ↔ x.val = y.val := Subtype.ext_iff
 @[simp, rocq_alias frac_valid_1] theorem Qp.valid_one : ✓ (1 : Qp) := by grind
 @[simp, grind =] theorem Qp.half_add_half (q : Qp) : q.half + q.half = q := Subtype.ext (by grind)
 
@@ -119,8 +119,8 @@ theorem Qp.lt_iff_exists_add {a b : Qp} : a < b ↔ ∃ c : Qp, a + c = b := by
 @[rocq_alias frac_included]
 theorem Frac.inc_iff {p q : Qp} : p ≼ q ↔ p < q := by
   refine ⟨fun ⟨r, Hr⟩ => ?_, fun H => ?_⟩
-  · have := r.2; simp only [Qp.lt_iff, Qp.equiv_iff, Qp.val_op] at *; grind
-  · exact ⟨⟨q.val - p.val, by grind⟩, by simp only [Qp.equiv_iff, Qp.val_op]; grind⟩
+  · have := r.2; simp only [Qp.lt_iff, Qp.eq_iff, Qp.val_op] at *; grind
+  · exact ⟨⟨q.val - p.val, by grind⟩, by simp only [Qp.eq_iff, Qp.val_op]; grind⟩
 
 @[rocq_alias frac_included_weak]
 theorem Frac.le_of_inc {p q : Qp} (H : p ≼ q) : p ≤ q := by

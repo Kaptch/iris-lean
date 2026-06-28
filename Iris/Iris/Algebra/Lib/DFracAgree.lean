@@ -34,7 +34,7 @@ variable {A : Type _} [OFE A]
 instance mk_ne {d : DFrac} : NonExpansive (mk d : A → DFracAgreeR A) where
   ne _ _ _ h := ⟨.rfl, NonExpansive.ne (f := toAgree) h⟩
 
-#rocq_ignore to_dfrac_agree_proper "Derivable from mk_ne with NonExpansive.eqv"
+#rocq_ignore to_dfrac_agree_proper "Derivable from mk_ne with NonExpansive.congr"
 
 @[rocq_alias to_dfrac_agree_exclusive]
 instance mk_exclusive {a : A} : Exclusive (mk (.own (1 : Qp)) a) := one_exclusive_left
@@ -58,7 +58,7 @@ theorem mk_op {d₁ d₂ : DFrac} {a : A} : mk (d₁ • d₂) a = mk d₁ a •
 @[rocq_alias dfrac_agree_op_valid]
 theorem op_valid {d₁ d₂ : DFrac} {a₁ a₂ : A} : ✓ (mk d₁ a₁ • mk d₂ a₂) ↔ ✓ (d₁ • d₂) ∧ a₁ = a₂ := by
   simp only [Valid, Prod.Valid, Prod.op, CMRA.op, mk]
-  exact and_congr_right fun _ => Agree.toAgree_op_valid_iff_equiv
+  exact and_congr_right fun _ => Agree.toAgree_op_valid_iff_eq
 
 @[rocq_alias dfrac_agree_op_valid_L]
 theorem op_valid_L {d₁ d₂ : DFrac} {a₁ a₂ : A} :
@@ -82,7 +82,7 @@ theorem included {d₁ d₂ : DFrac} {a₁ a₂ : A} :
     exact ⟨⟨zd, congrArg Prod.fst h⟩, Agree.toAgree_included.mp ⟨za, congrArg Prod.snd h⟩⟩
   · rintro ⟨⟨zd, hd⟩, ha⟩
     refine ⟨(zd, toAgree a₁), Prod.ext hd ?_⟩
-    exact (NonExpansive.eqv (f := toAgree) ha.symm).trans Agree.idemp.symm
+    exact (NonExpansive.congr (f := toAgree) ha.symm).trans Agree.idemp.symm
 
 @[rocq_alias dfrac_agree_included_L]
 theorem included_L {d₁ d₂ : DFrac} {a₁ a₂ : A} :

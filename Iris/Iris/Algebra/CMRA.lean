@@ -190,8 +190,8 @@ instance : NonExpansive₂ (op? (α := α)) where
     match y₁, y₂, e₂ with
     | none, none, _ => e₁
     | some _, some _, e₂ =>
-      (CMRA.op_ne.ne e₂).trans (equiv_dist.mp comm _ |>.trans <|
-        (CMRA.op_ne.ne e₁).trans (equiv_dist.mp comm _))
+      (CMRA.op_ne.ne e₂).trans (eq_iff_forall_dist.mp comm _ |>.trans <|
+        (CMRA.op_ne.ne e₁).trans (eq_iff_forall_dist.mp comm _))
 
 #rocq_ignore cmra_opM_proper "Derived from nonexpansivity"
 
@@ -216,32 +216,30 @@ instance : NonExpansive (pcore (α := α)) where
       cases hw.symm ▸ ex
     | .none, .none => rw [ex, ey]
 
-theorem coreId_of_eqv {x₁ x₂ : α} (e : x₁ = x₂) (h : CoreId x₁) : CoreId x₂ where
+theorem coreId_of_eq {x₁ x₂ : α} (e : x₁ = x₂) (h : CoreId x₁) : CoreId x₂ where
   core_id := calc
-    pcore x₂ = pcore x₁ := NonExpansive.eqv e.symm
+    pcore x₂ = pcore x₁ := NonExpansive.congr e.symm
     _        = some x₁  := h.core_id
     _        = some x₂  := congrArg some e
 
 @[rocq_alias CoreId_proper]
 theorem coreId_iff {x₁ x₂ : α} (e : x₁ = x₂) : CoreId x₁ ↔ CoreId x₂ :=
-  ⟨coreId_of_eqv e, coreId_of_eqv e.symm⟩
+  ⟨coreId_of_eq e, coreId_of_eq e.symm⟩
 
 /-! ## Op -/
 
-theorem op_right_eqv (x : α) {y z : α} (e : y = z) : x • y = x • z := op_ne.eqv e
-theorem _root_.Iris.OFE.Equiv.op_r {x y z : α} : y = z → x • y = x • z := op_right_eqv _
+theorem op_right_congr (x : α) {y z : α} (e : y = z) : x • y = x • z := op_ne.congr e
 
 theorem op_right_dist (x : α) {y z : α} (e : y ≡{n}≡ z) : x • y ≡{n}≡ x • z :=
   op_ne.ne e
 theorem _root_.Iris.OFE.Dist.op_r {x y z : α} : y ≡{n}≡ z → x • y ≡{n}≡ x • z := op_right_dist _
 
-theorem op_commN {x y : α} : x • y ≡{n}≡ y • x := equiv_dist.mp comm n
+theorem op_commN {x y : α} : x • y ≡{n}≡ y • x := eq_iff_forall_dist.mp comm n
 
-theorem op_assocN {x y z : α} : x • (y • z) ≡{n}≡ (x • y) • z := equiv_dist.mp assoc n
+theorem op_assocN {x y z : α} : x • (y • z) ≡{n}≡ (x • y) • z := eq_iff_forall_dist.mp assoc n
 
-theorem op_left_eqv {x y : α} (z : α) (e : x = y) : x • z = y • z :=
-  comm.trans <| (Equiv.op_r e).trans comm
-theorem _root_.Iris.OFE.Equiv.op_l {x y z : α} : x = y → x • z = y • z := op_left_eqv _
+theorem op_left_congr {x y : α} (z : α) (e : x = y) : x • z = y • z :=
+  comm.trans <| (op_right_congr _ e).trans comm
 
 theorem op_left_dist {x y : α} (z : α) (e : x ≡{n}≡ y) : x • z ≡{n}≡ y • z :=
   op_commN.trans <| e.op_r.trans op_commN
@@ -251,12 +249,11 @@ theorem _root_.Iris.OFE.Dist.op {x x' y y' : α}
     (ex : x ≡{n}≡ x') (ey : y ≡{n}≡ y') : x • y ≡{n}≡ x' • y' := ex.op_l.trans ey.op_r
 
 @[rocq_alias cmra_op_proper']
-theorem op_eqv {x x' y y' : α} (ex : x = x') (ey : y = y') : x • y = x' • y' :=
-  (Equiv.op_l ex).trans (Equiv.op_r ey)
-theorem _root_.Iris.OFE.Equiv.op : (x : α) = x' → y = y' → x • y = x' • y' := op_eqv
+theorem op_congr {x x' y y' : α} (ex : x = x') (ey : y = y') : x • y = x' • y' :=
+  (op_left_congr _ ex).trans (op_right_congr _ ey)
 
 theorem op_proper2 {x₁ x₂ y₁ y₂ : α} (H1 : x₁ = x₂) (H2 : y₁ = y₂) : x₁ • y₁ = x₂ • y₂ :=
-  (Equiv.op_l H1).trans (op_right_eqv x₂ H2)
+  (op_left_congr _ H1).trans (op_right_congr x₂ H2)
 
 theorem _root_.Iris.OFE.Dist.opM {x₁ x₂ : α} {y₁ y₂ : Option α}
     (H1 : x₁ ≡{n}≡ x₂) (H2 : y₁ ≡{n}≡ y₂) : x₁ •? y₁ ≡{n}≡ x₂ •? y₂ :=
@@ -264,12 +261,12 @@ theorem _root_.Iris.OFE.Dist.opM {x₁ x₂ : α} {y₁ y₂ : Option α}
   | none, none, _ => H1
   | some _, some _, H2 => H1.op H2
 
-theorem _root_.Iris.OFE.Equiv.opM {x₁ x₂ : α} {y₁ y₂ : Option α}
+theorem opM_congr {x₁ x₂ : α} {y₁ y₂ : Option α}
     (H1 : x₁ = x₂) (H2 : y₁ = y₂) : x₁ •? y₁ = x₂ •? y₂ :=
-  equiv_dist.2 fun _ => H1.dist.opM H2.dist
+  eq_iff_forall_dist.2 fun _ => H1.dist.opM H2.dist
 
-theorem opM_left_eqv {x y : α} (z : Option α) (e : x = y) : x •? z = y •? z := Equiv.opM e rfl
-theorem opM_right_eqv (x : α) {y z : Option α} (e : y = z) : x •? y = x •? z := Equiv.opM rfl e
+theorem opM_left_congr {x y : α} (z : Option α) (e : x = y) : x •? z = y •? z := opM_congr e rfl
+theorem opM_right_congr (x : α) {y z : Option α} (e : y = z) : x •? y = x •? z := opM_congr rfl e
 
 theorem opM_left_dist {n} {x y : α} (z : Option α) (e : x ≡{n}≡ y) : x •? z ≡{n}≡ y •? z :=
   e.opM Dist.rfl
@@ -291,23 +288,22 @@ theorem Valid.validN : ✓ (x : α) → ✓{n} x := (valid_iff_validN.1 · _)
 theorem valid_mapN {x y : α} (f : ∀ n, ✓{n} x → ✓{n} y) (v : ✓ x) : ✓ y :=
   valid_iff_validN.mpr fun n => f n v.validN
 
-theorem validN_of_eqv {x y : α} : x = y → ✓{n} x → ✓{n} y :=
-  fun e v => validN_ne (equiv_dist.mp e n) v
+theorem validN_of_eq {x y : α} : x = y → ✓{n} x → ✓{n} y :=
+  fun e v => validN_ne (eq_iff_forall_dist.mp e n) v
 
 @[rocq_alias cmra_validN_ne']
 theorem validN_dist_iff {x y : α} (e : x ≡{n}≡ y) : ✓{n} x ↔ ✓{n} y := ⟨validN_ne e, validN_ne e.symm⟩
 theorem _root_.Iris.OFE.Dist.validN : (x : α) ≡{n}≡ y → (✓{n} x ↔ ✓{n} y) := validN_dist_iff
 
 @[rocq_alias cmra_validN_proper]
-theorem validN_eqv_iff {x y : α} (e : x = y) : ✓{n} x ↔ ✓{n} y :=
-  validN_dist_iff (equiv_dist.mp e n)
+theorem validN_eq_iff {x y : α} (e : x = y) : ✓{n} x ↔ ✓{n} y :=
+  validN_dist_iff (eq_iff_forall_dist.mp e n)
 
-theorem valid_of_eqv {x y : α} : x = y → ✓ x → ✓ y :=
-  fun e => valid_mapN fun _ => validN_of_eqv e
+theorem valid_of_eq {x y : α} : x = y → ✓ x → ✓ y :=
+  fun e => valid_mapN fun _ => validN_of_eq e
 
 @[rocq_alias cmra_valid_proper]
-theorem valid_iff {x y : α} (e : x = y) : ✓ x ↔ ✓ y := ⟨valid_of_eqv e, valid_of_eqv e.symm⟩
-theorem _root_.Iris.OFE.Equiv.valid : (x : α) = y → (✓ x ↔ ✓ y) := valid_iff
+theorem valid_iff {x y : α} (e : x = y) : ✓ x ↔ ✓ y := ⟨valid_of_eq e, valid_of_eq e.symm⟩
 
 @[rocq_alias cmra_validN_le]
 theorem validN_of_le {n n'} {x : α} (le : n' ≤ n) : ✓{n} x → ✓{n'} x :=
@@ -321,7 +317,7 @@ theorem valid0_of_validN {n} {x : α} : ✓{n} x → ✓{0} x := validN_of_le (N
 
 @[rocq_alias cmra_validN_op_r]
 theorem validN_op_right {n} {x y : α} : ✓{n} (x • y) → ✓{n} y :=
-  fun v => validN_op_left (validN_of_eqv comm v)
+  fun v => validN_op_left (validN_of_eq comm v)
 
 @[rocq_alias cmra_valid_op_r]
 theorem valid_op_right (x y : α) : ✓ (x • y) → ✓ y :=
@@ -329,7 +325,7 @@ theorem valid_op_right (x y : α) : ✓ (x • y) → ✓ y :=
 
 @[rocq_alias cmra_valid_op_l]
 theorem valid_op_left {x y : α} : ✓ (x • y) → ✓ x :=
-  fun v => valid_op_right y x (valid_of_eqv comm v)
+  fun v => valid_op_right y x (valid_of_eq comm v)
 
 theorem validN_opM {x : α} {my : Option α} : ✓{n} (x •? my) → ✓{n} x :=
   match my with
@@ -357,13 +353,13 @@ theorem validN_op_opM_right {mz : Option α} (h : ✓{n} (x • y : α) •? mz)
 @[rocq_alias cmra_pcore_proper]
 theorem pcore_proper {x y : α} (cx : α) (e : x = y) (ps : pcore x = some cx)
     : ∃ cy, pcore y = some cy ∧ cx = cy := by
-  let ⟨cy, hcy, ecy⟩ := pcore_ne (equiv_dist.mp e 0) ps
+  let ⟨cy, hcy, ecy⟩ := pcore_ne (eq_iff_forall_dist.mp e 0) ps
   refine ⟨cy, hcy, ?_⟩
   have (n : Nat) : cx ≡{n}≡ cy :=
-    let ⟨cy', hcy', ecy'⟩ := pcore_ne (equiv_dist.mp e n) ps
+    let ⟨cy', hcy', ecy'⟩ := pcore_ne (eq_iff_forall_dist.mp e n) ps
     have : cy' = cy := Option.some_inj.mp (hcy' ▸ hcy)
     this ▸ ecy'
-  exact equiv_dist.mpr this
+  exact eq_iff_forall_dist.mpr this
 
 @[rocq_alias cmra_op_ne']
 instance cmra_op_ne2 : NonExpansive₂ (op (α := α)) where
@@ -371,13 +367,13 @@ instance cmra_op_ne2 : NonExpansive₂ (op (α := α)) where
 
 @[rocq_alias cmra_pcore_proper']
 theorem pcore_proper' {x y : α} (e : x = y) : pcore x = pcore y :=
-  NonExpansive.eqv e
+  NonExpansive.congr e
 
 @[rocq_alias cmra_pcore_l']
 theorem pcore_op_left' {x : α} {cx} (e : pcore x = some cx) : cx • x = x :=
-  let ⟨z, pz, ez⟩ := equiv_some e
+  let ⟨z, pz, ez⟩ := eq_some e
   calc
-    cx • x = z • x := op_left_eqv _ ez.symm
+    cx • x = z • x := op_left_congr _ ez.symm
     _      = x     := pcore_op_left pz
 
 @[rocq_alias cmra_pcore_r]
@@ -388,12 +384,12 @@ theorem pcore_op_right {x : α} {cx} (e : pcore x = some cx) : x • cx = x :=
 
 @[rocq_alias cmra_pcore_r']
 theorem pcore_op_right' {x : α} {cx} (e : pcore x = some cx) : x • cx = x :=
-  let ⟨_, pz, ez⟩ := equiv_some e
-  (op_right_eqv x ez).symm.trans (pcore_op_right pz)
+  let ⟨_, pz, ez⟩ := eq_some e
+  (op_right_congr x ez).symm.trans (pcore_op_right pz)
 
 @[rocq_alias cmra_pcore_idemp']
 theorem pcore_idem' {x : α} {cx} (e : pcore x = some cx) : pcore cx = some cx :=
-  let ⟨y, py, (ey : y = cx)⟩ := equiv_some e
+  let ⟨y, py, (ey : y = cx)⟩ := eq_some e
   calc
     pcore cx = pcore y := pcore_proper' ey.symm
     _        = some y  := pcore_idem py
@@ -405,13 +401,13 @@ theorem pcore_op_self {x : α} {cx} (e : pcore x = some cx) : cx • cx = cx :=
 
 @[rocq_alias cmra_pcore_dup']
 theorem pcore_op_self' {x : α} {cx} (e : pcore x = some cx) : cx • cx = cx :=
-  let ⟨z, pz, ez⟩ := equiv_some e
+  let ⟨z, pz, ez⟩ := eq_some e
   have : z • z = z := pcore_op_right' (pcore_idem pz)
-  (Equiv.op ez ez).symm.trans (this.trans ez)
+  (op_congr ez ez).symm.trans (this.trans ez)
 
 @[rocq_alias cmra_pcore_validN]
 theorem pcore_validN {n} {x : α} {cx} (e : pcore x = some cx) (v : ✓{n} x) : ✓{n} cx :=
-  validN_op_right (validN_of_eqv (pcore_op_right e).symm v)
+  validN_op_right (validN_of_eq (pcore_op_right e).symm v)
 
 @[rocq_alias cmra_pcore_valid]
 theorem pcore_valid {x : α} {cx} (e : pcore x = some cx) : ✓ x → ✓ cx :=
@@ -425,7 +421,7 @@ theorem not_valid_exclN_op_left {n} {x : α} [Exclusive x] {y} : ¬✓{n} (x •
 
 @[rocq_alias exclusiveN_r]
 theorem not_valid_exclN_op_right {n} {x : α} [Exclusive x] {y} : ¬✓{n} (y • x) :=
-  fun v => not_valid_exclN_op_left (validN_of_eqv comm v)
+  fun v => not_valid_exclN_op_left (validN_of_eq comm v)
 
 @[rocq_alias exclusive_l]
 theorem not_valid_excl_op_left {x : α} [Exclusive x] {y} : ¬✓ (x • y) :=
@@ -433,7 +429,7 @@ theorem not_valid_excl_op_left {x : α} [Exclusive x] {y} : ¬✓ (x • y) :=
 
 @[rocq_alias exclusive_r]
 theorem not_excl_op_right {x : α} [Exclusive x] {y} : ¬✓ (y • x) :=
-  fun v => not_valid_excl_op_left (valid_of_eqv comm v)
+  fun v => not_valid_excl_op_left (valid_of_eq comm v)
 
 @[rocq_alias exclusiveN_opM]
 theorem none_of_excl_valid_op {n} {x : α} [Exclusive x] {my} : ✓{n} (x •? my) → my = none := by
@@ -445,30 +441,30 @@ theorem not_valid_of_exclN_inc {n} {x : α} [Exclusive x] {y} : x ≼{n} y → �
 
 @[rocq_alias exclusive_included]
 theorem not_valid_of_excl_inc {x : α} [Exclusive x] {y} : x ≼ y → ¬✓ y
-  | ⟨_, hz⟩, v => Exclusive.exclusive0_l _ <| validN_of_eqv hz v.validN
+  | ⟨_, hz⟩, v => Exclusive.exclusive0_l _ <| validN_of_eq hz v.validN
 
-theorem Exclusive.of_eqv {x₁ x₂ : α} (e : x₁ = x₂) (h : Exclusive x₁) : Exclusive x₂ where
-  exclusive0_l y := h.exclusive0_l y ∘ (Equiv.op_l e).dist.validN.2
+theorem Exclusive.of_eq {x₁ x₂ : α} (e : x₁ = x₂) (h : Exclusive x₁) : Exclusive x₂ where
+  exclusive0_l y := h.exclusive0_l y ∘ (op_left_congr _ e).dist.validN.2
 
 @[rocq_alias Exclusive_proper]
 theorem exclusive_iff {x₁ x₂ : α} (e : x₁ = x₂) : Exclusive x₁ ↔ Exclusive x₂ :=
-  ⟨.of_eqv e, .of_eqv e.symm⟩
+  ⟨.of_eq e, .of_eq e.symm⟩
 theorem _root_.Iris.OFE.Dist.exclusive {x₁ x₂ : α} : x₁ = x₂ → (Exclusive x₁ ↔ Exclusive x₂) :=
   exclusive_iff
 
 /-! ## Order -/
 
-theorem inc_of_eqv_of_inc (e : (a : α) = b) : b ≼ c → a ≼ c
-  | ⟨t, et⟩ => ⟨t, et.trans (Equiv.op_l e.symm)⟩
+theorem inc_of_eq_of_inc (e : (a : α) = b) : b ≼ c → a ≼ c
+  | ⟨t, et⟩ => ⟨t, et.trans (op_left_congr _ e.symm)⟩
 
 instance : Trans (α := α) (· = ·) Included Included where
-  trans := inc_of_eqv_of_inc
+  trans := inc_of_eq_of_inc
 
-theorem inc_of_inc_of_eqv : (a : α) ≼ b → b = c → a ≼ c
+theorem inc_of_inc_of_eq : (a : α) ≼ b → b = c → a ≼ c
   | ⟨t, et⟩, e => ⟨t, e.symm.trans et⟩
 
 instance : Trans (Included (α := α)) (· = ·) Included where
-  trans := inc_of_inc_of_eqv
+  trans := inc_of_inc_of_eq
 
 theorem incN_of_incN_of_dist : (a : α) ≼{n} b → b ≡{n}≡ c → a ≼{n} c
   | ⟨t, et⟩, e => ⟨t, e.symm.trans et⟩
@@ -488,17 +484,14 @@ theorem incN_of_inc (n) {x y : α} : x ≼ y → x ≼{n} y
 theorem Included.incN {n} {x y : α} : x ≼ y → x ≼{n} y := incN_of_inc _
 
 theorem inc_iff_left (e : (a : α) = b) : a ≼ c ↔ b ≼ c :=
-  ⟨inc_of_eqv_of_inc e.symm, inc_of_eqv_of_inc e⟩
-theorem _root_.Iris.OFE.Equiv.inc_l : (a : α) = b → (a ≼ c ↔ b ≼ c) := inc_iff_left
+  ⟨inc_of_eq_of_inc e.symm, inc_of_eq_of_inc e⟩
 
 theorem inc_iff_right (e : (b : α) = c) : a ≼ b ↔ a ≼ c :=
-  ⟨(inc_of_inc_of_eqv · e), (inc_of_inc_of_eqv · e.symm)⟩
-theorem _root_.Iris.OFE.Equiv.inc_r : (b : α) = c → (a ≼ b ↔ a ≼ c) := inc_iff_right
+  ⟨(inc_of_inc_of_eq · e), (inc_of_inc_of_eq · e.symm)⟩
 
 @[rocq_alias cmra_included_proper]
 theorem inc_iff (ea : (a : α) = a') (eb : (b : α) = b') : a ≼ b ↔ a' ≼ b' :=
   (inc_iff_left ea).trans (inc_iff_right eb)
-theorem _root_.Iris.OFE.Equiv.inc : (a : α) = a' → b = b' → (a ≼ b ↔ a' ≼ b') := inc_iff
 
 theorem incN_iff_left (e : (a : α) ≡{n}≡ b) : a ≼{n} c ↔ b ≼{n} c :=
   ⟨incN_of_dist_of_incN e.symm, incN_of_dist_of_incN e⟩
@@ -515,7 +508,7 @@ theorem _root_.Iris.OFE.Dist.incN :
     (a : α) ≡{n}≡ a' → b ≡{n}≡ b' → (a ≼{n} b ↔ a' ≼{n} b') := incN_dist_iff
 
 @[rocq_alias cmra_includedN_proper]
-theorem incN_eqv_iff (ea : (a : α) = a') (eb : (b : α) = b') : a ≼{n} b ↔ a' ≼{n} b' :=
+theorem incN_eq_iff (ea : (a : α) = a') (eb : (b : α) = b') : a ≼{n} b ↔ a' ≼{n} b' :=
   incN_dist_iff ea.dist eb.dist
 
 @[rocq_alias cmra_included_trans]
@@ -524,7 +517,7 @@ theorem inc_trans {x y z : α} : x ≼ y → y ≼ z → x ≼ z
     suffices h : z = x • (w • t) from ⟨w • t, h⟩
     calc
       z = y • t := ht
-      _ = (x • w) • t := op_left_eqv _ hw
+      _ = (x • w) • t := op_left_congr _ hw
       _ = x • (w • t) := assoc.symm
 theorem Included.trans : (x : α) ≼ y → y ≼ z → x ≼ z := inc_trans
 
@@ -546,7 +539,7 @@ instance : Trans (IncludedN (α := α) n) (IncludedN n) (IncludedN n) where
 
 @[rocq_alias cmra_valid_included]
 theorem valid_of_inc {x y : α} : x ≼ y → ✓ y → ✓ x
-  | ⟨_, hz⟩, v => valid_op_left (valid_of_eqv hz v)
+  | ⟨_, hz⟩, v => valid_op_left (valid_of_eq hz v)
 
 @[rocq_alias cmra_validN_includedN]
 theorem validN_of_incN {n} {x y : α} : x ≼{n} y → ✓{n} y → ✓{n} x
@@ -555,7 +548,7 @@ theorem IncludedN.validN {n} {x y : α} : x ≼{n} y → ✓{n} y → ✓{n} x :
 
 @[rocq_alias cmra_validN_included]
 theorem validN_of_inc {n} {x y : α} : x ≼ y → ✓{n} y → ✓{n} x
-  | ⟨_, hz⟩, v => validN_op_left (validN_ne (equiv_dist.mp hz n) v)
+  | ⟨_, hz⟩, v => validN_op_left (validN_ne (eq_iff_forall_dist.mp hz n) v)
 theorem Included.validN {n} {x y : α} : x ≼ y → ✓{n} y → ✓{n} x := validN_of_inc
 
 @[rocq_alias cmra_includedN_le]
@@ -586,15 +579,15 @@ theorem incN_op_right (n) (x y : α) : y ≼{n} x • y :=
 theorem pcore_mono {x y : α} : x ≼ y → pcore x = some cx → ∃ cy, pcore y = some cy ∧ cx ≼ cy
   | ⟨_, hw⟩, e =>
     have ⟨z, hz⟩ := pcore_op_mono e _
-    let ⟨t, ht, et⟩ := OFE.equiv_some ((NonExpansive.eqv hw).trans hz)
+    let ⟨t, ht, et⟩ := OFE.eq_some ((NonExpansive.congr hw).trans hz)
     ⟨t, ht, z, et⟩
 
 @[rocq_alias cmra_pcore_mono']
 theorem pcore_mono' {x y : α} {cx} (le : x ≼ y) (e : pcore x = some cx) :
     ∃ cy, pcore y = some cy ∧ cx ≼ cy :=
-  let ⟨_, hw, ew⟩ := OFE.equiv_some e
+  let ⟨_, hw, ew⟩ := OFE.eq_some e
   have ⟨t, ht, z, et⟩ := pcore_mono le hw
-  ⟨t, ht, z, et.trans (Equiv.op_l ew)⟩
+  ⟨t, ht, z, et.trans (op_left_congr _ ew)⟩
 
 @[rocq_alias cmra_pcore_monoN']
 theorem pcore_monoN' {n} {x y : α} {cx} :
@@ -618,7 +611,7 @@ theorem pcore_inc_self {x : α} {cx} (e : pcore x = some cx) : cx ≼ x :=
 
 @[rocq_alias cmra_mono_l]
 theorem op_mono_right {x y} (z : α) : x ≼ y → z • x ≼ z • y
-  | ⟨w, hw⟩ => ⟨w, (Equiv.op_r hw).trans assoc⟩
+  | ⟨w, hw⟩ => ⟨w, (op_right_congr _ hw).trans assoc⟩
 
 @[rocq_alias cmra_monoN_l]
 theorem op_monoN_right {n x y} (z : α) : x ≼{n} y → z • x ≼{n} z • y
@@ -630,7 +623,7 @@ theorem op_monoN_left {n x y} (z : α) (h : x ≼{n} y) : x • z ≼{n} y • z
 
 @[rocq_alias cmra_mono_r]
 theorem op_mono_left {x y} (z : α) (h : x ≼ y) : x • z ≼ y • z :=
-  (Equiv.inc comm comm).1 (op_mono_right z h)
+  (inc_iff comm comm).1 (op_mono_right z h)
 
 @[rocq_alias cmra_monoN]
 theorem op_monoN {n} {x x' y y' : α} (hx : x ≼{n} x') (hy : y ≼{n} y') : x • y ≼{n} x' • y' :=
@@ -649,7 +642,7 @@ theorem op_self (x : α) [CoreId x] : x • x = x := pcore_op_self' CoreId.core_
 
 @[rocq_alias core_id_extract]
 theorem op_core_right_of_inc {x y : α} [CoreId x] : x ≼ y → x • y = y
-  | ⟨_, hz⟩ => (Equiv.op_r hz).trans <| assoc.trans <| (Equiv.op_l (op_self _)).trans hz.symm
+  | ⟨_, hz⟩ => (op_right_congr _ hz).trans <| assoc.trans <| (op_left_congr _ (op_self _)).trans hz.symm
 
 @[rocq_alias cmra_included_dist_l]
 theorem included_dist_l {n} {x1 x2 x1' : α} :
@@ -706,18 +699,17 @@ theorem core_ne : NonExpansive (core : α → α) where
 
 theorem _root_.Iris.OFE.Dist.core :
   ∀ {n} {x₁ x₂ : α}, x₁ ≡{n}≡ x₂ → core x₁ ≡{n}≡ core x₂ := @core_ne.ne
-theorem _root_.Iris.OFE.Equiv.core : ∀ {x₁ x₂ : α}, x₁ = x₂ → core x₁ = core x₂ := @core_ne.eqv
 
 @[rocq_alias core_id_core]
-theorem core_eqv_self (x : α) [CoreId x] : core (x : α) = x :=
+theorem core_eq_self (x : α) [CoreId x] : core (x : α) = x :=
   Option.some.inj ((pcore_eq_core x).symm.trans CoreId.core_id)
 
 @[rocq_alias core_id_total]
-theorem coreId_iff_core_eqv_self : CoreId (x : α) ↔ core x = x :=
-  ⟨fun _ => core_eqv_self x, fun e => { core_id := (pcore_eq_core x).trans (congrArg some e) }⟩
+theorem coreId_iff_core_eq_self : CoreId (x : α) ↔ core x = x :=
+  ⟨fun _ => core_eq_self x, fun e => { core_id := (pcore_eq_core x).trans (congrArg some e) }⟩
 
 @[rocq_alias cmra_core_idemp]
-theorem core_idem (x : α) : core (core x) = core x := core_eqv_self _
+theorem core_idem (x : α) : core (core x) = core x := core_eq_self _
 
 theorem inc_refl (x : α) : x ≼ x := ⟨core x, (op_core _).symm⟩
 @[refl] theorem Included.rfl {x : α} : x ≼ x := inc_refl x
@@ -727,7 +719,7 @@ theorem incN_refl (x : α) : x ≼{n} x := (inc_refl _).incN
 
 @[rocq_alias cmra_included_core]
 theorem core_inc_self {x : α} [CoreId x] : core x ≼ x :=
-  ⟨x, ((Equiv.op_l (core_eqv_self x)).trans (op_self _)).symm⟩
+  ⟨x, ((op_left_congr _ (core_eq_self x)).trans (op_self _)).symm⟩
 
 @[rocq_alias cmra_core_monoN]
 theorem core_incN_core {n} {x y : α} (inc : x ≼{n} y) : core x ≼{n} core y := by
@@ -743,7 +735,7 @@ theorem core_op_mono (x y : α) : core x ≼ core (x • y) := by
 @[rocq_alias cmra_core_mono]
 theorem core_mono {x y : α} (Hinc : x ≼ y) : core x ≼ core y := by
   have ⟨z, hz⟩ := Hinc
-  exact (Equiv.inc_r (Equiv.core hz)).2 (core_op_mono x z)
+  exact (inc_iff_right (congrArg CMRA.core hz)).2 (core_op_mono x z)
 
 end total
 
@@ -755,7 +747,7 @@ variable {α : Type _} [CMRA α]
 theorem discrete_inc_l {x y : α} [HD : DiscreteE x] (Hv : ✓{0} y) (Hle : x ≼{0} y) : x ≼ y :=
   have ⟨_, hz⟩ := Hle
   let ⟨_, t, wt, wx, _⟩ := extend Hv hz
-  ⟨t, wt.trans (Equiv.op_l (HD.discrete wx.symm).symm)⟩
+  ⟨t, wt.trans (op_left_congr _ (HD.discrete wx.symm).symm)⟩
 
 @[rocq_alias cmra_discrete_included_r]
 theorem discrete_inc_r {x y : α} [HD : DiscreteE y] : x ≼{0} y → x ≼ y
@@ -766,7 +758,7 @@ def discrete_op {x y : α} (Hv : ✓{0} x • y) [Hx : DiscreteE x] [Hy : Discre
     DiscreteE (x • y) where
   discrete h :=
     let ⟨_w, _t, wt, wx, ty⟩ := extend ((Dist.validN h).mp Hv) h.symm
-    (Equiv.op (Hx.discrete wx.symm) (Hy.discrete ty.symm)).trans wt.symm
+    (op_congr (Hx.discrete wx.symm) (Hy.discrete ty.symm)).trans wt.symm
 
 end discreteElements
 
@@ -799,7 +791,7 @@ variable {α : Type _} [CMRA α]
 
 @[rocq_alias cancelable]
 theorem cancelable {x y z : α} [Cancelable x] (v : ✓(x • y)) (e : x • y = x • z) : y = z :=
-  equiv_dist.mpr fun _ => cancelableN v.validN e.dist
+  eq_iff_forall_dist.mpr fun _ => cancelableN v.validN e.dist
 
 @[rocq_alias discrete_cancelable]
 theorem discrete_cancelable {x : α} [Discrete α]
@@ -817,16 +809,14 @@ instance cancelable_op {x y : α} [Cancelable x] [Cancelable y] : Cancelable (x 
 instance exclusive_cancelable {x : α} [Exclusive x] : Cancelable x where
   cancelableN v _ := absurd v not_valid_exclN_op_left
 
-theorem Cancelable.of_eqv {x₁ x₂ : α} (e : x₁ = x₂) (h : Cancelable x₁) : Cancelable x₂ where
+theorem Cancelable.of_eq {x₁ x₂ : α} (e : x₁ = x₂) (h : Cancelable x₁) : Cancelable x₂ where
   cancelableN {n w _} v ee :=
-    have v_xw : ✓{n} x₁ • w := (Equiv.op_l e.symm).dist.validN.1 v
+    have v_xw : ✓{n} x₁ • w := (op_left_congr _ e.symm).dist.validN.1 v
     h.cancelableN v_xw <| e.dist.op_l.trans <| ee.trans e.symm.dist.op_l
 
 @[rocq_alias cancelable_proper]
 theorem cancelable_iff {x₁ x₂ : α} (e : x₁ = x₂) : Cancelable x₁ ↔ Cancelable x₂ :=
-  ⟨.of_eqv e, .of_eqv e.symm⟩
-theorem _root_.Iris.OFE.Equiv.cancelable {x₁ x₂ : α} : x₁ = x₂ → (Cancelable x₁ ↔ Cancelable x₂) :=
-  cancelable_iff
+  ⟨.of_eq e, .of_eq e.symm⟩
 
 theorem op_opM_cancel_dist {x y z : α} [Cancelable x]
     (vxy : ✓{n} x • y) (h : x • y ≡{n}≡ (x • z) •? mw) : y ≡{n}≡ z •? mw :=
@@ -847,7 +837,7 @@ variable {α : Type _} [CMRA α]
 -- Qed.
 
 -- Global Instance id_free_proper : Proper (equiv ==> iff) (@IdFree A).
--- Proof. by move=> P Q /equiv_dist /(_ 0)=> →. Qed.
+-- Proof. by move=> P Q /eq_iff_forall_dist /(_ 0)=> →. Qed.
 
 theorem IdFree.of_dist {x₁ x₂ : α} {n} (e : x₁ ≡{n}≡ x₂) (h : IdFree x₁) : IdFree x₂ where
   id_free0_r z v := fun h₂ =>
@@ -861,14 +851,12 @@ theorem IdFree.of_dist {x₁ x₂ : α} {n} (e : x₁ ≡{n}≡ x₂) (h : IdFre
 theorem _root_.Iris.OFE.Dist.idFree {x₁ x₂ : α} (e : x₁ ≡{n}≡ x₂) : IdFree x₁ ↔ IdFree x₂ :=
   ⟨.of_dist e, .of_dist e.symm⟩
 
-theorem IdFree.of_eqv {x₁ x₂ : α} (e : x₁ = x₂) (h : IdFree x₁) : IdFree x₂ :=
+theorem IdFree.of_eq {x₁ x₂ : α} (e : x₁ = x₂) (h : IdFree x₁) : IdFree x₂ :=
   h.of_dist e.dist (n := 0)
 
 @[rocq_alias id_free_proper]
 theorem idFree_iff {x₁ x₂ : α} (e : x₁ = x₂) : IdFree x₁ ↔ IdFree x₂ :=
   e.dist.idFree (n := 0)
-theorem _root_.Iris.OFE.Equiv.idFree {x₁ x₂ : α} : x₁ = x₂ → (IdFree x₁ ↔ IdFree x₂) :=
-  idFree_iff
 
 @[rocq_alias id_freeN_r]
 theorem id_freeN_r {n n'} {x : α} [IdFree x] {y} (v : ✓{n} x) : ¬(x • y ≡{n'}≡ x) :=
@@ -897,7 +885,7 @@ instance idFree_op_r {x y : α} [IdFree y] [Cancelable x] : IdFree (x • y) whe
 
 @[rocq_alias id_free_op_l]
 instance idFree_op_l {x y : α} [IdFree x] [Cancelable y] : IdFree (x • y) :=
-  (Equiv.idFree comm).1 inferInstance
+  (idFree_iff comm).1 inferInstance
 
 @[rocq_alias exclusive_id_free]
 instance exclusive_idFree {x : α} [Exclusive x] : IdFree x where
@@ -944,7 +932,7 @@ instance empty_cancelable : Cancelable (unit : α) where
     _ ≡{n}≡ t := unit_left_id.dist
 
 theorem _root_.Iris.OFE.Dist.to_incN {n} {x y : α} (H : x ≡{n}≡ y) : x ≼{n} y :=
-  ⟨unit, ((equiv_dist.mp unit_right_id n).trans H).symm⟩
+  ⟨unit, ((eq_iff_forall_dist.mp unit_right_id n).trans H).symm⟩
 
 @[rocq_alias cmra_monoid]
 instance ucmraMonoidOps {α : Type _} [UCMRA α] : Algebra.MonoidOps (CMRA.op (α := α)) UCMRA.unit where
@@ -1004,12 +992,8 @@ theorem core_idem_L {x : α} [IsTotal α] : core (core x) = core x :=
 theorem core_op_core_L {x : α} [IsTotal α] : core x • core x = core x :=
   core_op_core
 
-@[rocq_alias core_id_total_L]
-theorem coreId_iff_core_eq_self {x : α} [IsTotal α] : CoreId x ↔ core x = x :=
-  coreId_iff_core_eqv_self
-@[rocq_alias core_id_core_L]
-theorem core_eq_self {x : α} [IsTotal α] [c : CoreId x] : core x = x :=
-  coreId_iff_core_eq_self.mp c
+#rocq_ignore core_id_total_L "Now `=`; subsumed by `coreId_iff_core_eq_self`."
+#rocq_ignore core_id_core_L "Now `=`; subsumed by `core_eq_self`."
 
 end Leibniz
 
@@ -1077,8 +1061,8 @@ protected def Hom.id [CMRA α] : α -C> α where
 --       fun x y => sorry⟩
 
 @[rocq_alias cmra_morphism_proper]
-protected theorem Hom.eqv [CMRA β] (f : α -C> β) {x₁ x₂ : α} (X : x₁ = x₂) : f x₁ = f x₂ :=
-  f.ne.eqv X
+protected theorem Hom.congr [CMRA β] (f : α -C> β) {x₁ x₂ : α} (X : x₁ = x₂) : f x₁ = f x₂ :=
+  f.ne.congr X
 
 @[rocq_alias cmra_morphism_core]
 protected theorem Hom.core [CMRA β] (f : α -C> β) {x : α} : core (f x) = f (core x) := by
@@ -1086,15 +1070,15 @@ protected theorem Hom.core [CMRA β] (f : α -C> β) {x : α} : core (f x) = f (
     (pcore (f.f x)).getD (f.f x) = f.f ((pcore x).getD x)
   from this (f.pcore x)
   match pcore x with
-  | none => intro h; simp [equiv_none.1 h.symm]
+  | none => intro h; simp [h.symm]
   | some cx =>
     intro h
-    let ⟨s, hs, es⟩ := equiv_some h.symm
+    let ⟨s, hs, es⟩ := eq_some h.symm
     rw [hs]; exact es
 
 @[rocq_alias cmra_morphism_mono]
 protected theorem Hom.mono [CMRA β] (f : α -C> β) {x₁ x₂ : α} : x₁ ≼ x₂ → f x₁ ≼ f x₂
-  | ⟨z, hz⟩ => ⟨f.f z, (f.eqv hz).trans (f.op ..)⟩
+  | ⟨z, hz⟩ => ⟨f.f z, (f.congr hz).trans (f.op ..)⟩
 
 @[rocq_alias cmra_morphism_monoN]
 protected theorem Hom.monoN [CMRA β] (f : α -C> β) n {x₁ x₂ : α} : x₁ ≼{n} x₂ → f x₁ ≼{n} f x₂
@@ -1243,7 +1227,7 @@ instance cmraDiscreteFunO {α : Type _} (β : α → Type _)
     rintro f _ ⟨⟩ g
     refine ⟨fun x => core (f x • g x), congrArg some (funext fun x => ?_)⟩
     have ⟨r, hr⟩ := core_op_mono (f x) (g x)
-    exact hr.trans ((Equiv.op_r hr).trans <| assoc.trans (Equiv.op_l core_op_core)).symm
+    exact hr.trans ((op_right_congr _ hr).trans <| assoc.trans (op_left_congr _ core_op_core)).symm
   extend {n f f1 f2} Hv He := by
     let F x := extend (Hv x) (He x)
     exact ⟨fun x => (F x).1, fun x => (F x).2.1,
@@ -1257,7 +1241,7 @@ instance ucmraDiscreteFunO {α : Type _} (β : α → Type _) [∀ x, UCMRA (β 
   unit _ := unit
   unit_valid := by exact fun x => unit_valid
   unit_left_id := by intro f; funext x; exact unit_left_id
-  pcore_unit := by simp only [CMRA.pcore, cmraDiscreteFunO]; exact congrArg some (funext fun x => core_eqv_self _)
+  pcore_unit := by simp only [CMRA.pcore]; exact congrArg some (funext fun x => core_eq_self _)
 
 end DiscreteFunO
 
@@ -1357,14 +1341,14 @@ instance cmraOption : CMRA (Option α) where
   pcore_idem := by
     rintro (_|x) <;> simp [optionCore]
     rcases H : pcore x with _|y <;> simp
-    obtain ⟨z, Hz1, Hz2⟩ := equiv_some (pcore_idem H)
+    obtain ⟨z, Hz1, Hz2⟩ := eq_some (pcore_idem H)
     simp [Hz1]; exact Hz2
   pcore_op_mono := by
     rintro (_|x) _ ⟨⟩ (_|y) <;> simp only [optionCore, optionOp, Option.bind]
     all_goals (first | exact ⟨_, rfl⟩ | skip)
     · cases H : CMRA.pcore x
       · exact ⟨_, rfl⟩
-      · exact ⟨none, by simp [H]⟩
+      · exact ⟨none, by simp⟩
     · cases H : CMRA.pcore x
       · exact ⟨_, rfl⟩
       · obtain ⟨cy, Hcy⟩ := pcore_op_mono H y
@@ -1435,7 +1419,8 @@ theorem op_none_left_id (a : Option α) : (none : Option α) • a = a := by
 theorem op_none_right_id (a : Option α) : a • (none : Option α) = a := by
   cases a <;> rfl
 
-theorem equiv_of_some_equiv_some {x y : α} (H : some x = some y) : x = y := Option.some.inj H
+omit [CMRA α] in
+theorem eq_of_some_eq_some {x y : α} (H : some x = some y) : x = y := Option.some.inj H
 
 theorem dist_of_some_dist_some {n} {x y : α} (H : some x ≡{n}≡ some y) : x ≡{n}≡ y := H
 
@@ -1471,18 +1456,18 @@ theorem some_inc_some_of_dist_opM {mz : Option α} (H : x ≡{n}≡ y •? mz) :
 theorem inc_of_some_inc_some [IsTotal α] {x y : α} (H : some y ≼ some x) : y ≼ x :=
   let ⟨mz, hmz⟩ := H
   match mz with
-  | none => ⟨core y, (equiv_of_some_equiv_some hmz).trans (op_core y).symm⟩
+  | none => ⟨core y, (eq_of_some_eq_some hmz).trans (op_core y).symm⟩
   | some z => ⟨z, Option.some.inj hmz⟩
 
 theorem some_incN_some_iff_some [IsTotal α] {x y : α} : some y ≼{n} some x → y ≼{n} x
   | ⟨none, hmz⟩ => ⟨core y, dist_of_some_dist_some hmz |>.trans (op_core_dist y).symm⟩
   | ⟨some z, hmz⟩ => ⟨z, hmz⟩
 
-theorem exists_op_some_eqv_some (x : Option α) (y : α) : ∃ z, x • some y = some z :=
+theorem exists_op_some_eq_some (x : Option α) (y : α) : ∃ z, x • some y = some z :=
   match x with | .none => ⟨y, rfl⟩ | .some w => ⟨w • y, rfl⟩
 
 theorem exists_op_some_dist_some {n} (x : Option α) (y : α) : ∃ z, x • some y ≡{n}≡ some z :=
-  exists_op_some_eqv_some x y |>.elim (⟨·, ·.dist⟩)
+  exists_op_some_eq_some x y |>.elim (⟨·, ·.dist⟩)
 
 theorem not_valid_some_exclN_op_left {n} {x : α} [Exclusive x] {y : α} : ¬✓{n} (some x • some y) :=
   not_valid_exclN_op_left (α := α)
@@ -1573,7 +1558,7 @@ theorem some_inc_some_iff {a b : α} : some a ≼ some b ↔ a = b ∨ a ≼ b :
   apply inc_iff.trans; simp
 
 @[rocq_alias Some_included_exclusive]
-theorem eqv_of_inc_exclusive [Exclusive (a : α)] {b : α} (H : some a ≼ some b) (Hv : ✓ b) :
+theorem eq_of_inc_exclusive [Exclusive (a : α)] {b : α} (H : some a ≼ some b) (Hv : ✓ b) :
      a = b := by
   rcases inc_iff.mp H with (Hcontra|H)
   · simp at Hcontra
@@ -1743,14 +1728,14 @@ instance cmraProd : CMRA (α × β) where
   pcore_op_left {x cx} h :=
     let ⟨a, ha, ho⟩ := Option.bind_eq_some_iff.mp h
     let ⟨b, hb, hh⟩ := Option.bind_eq_some_iff.mp ho
-    (Option.some.inj hh) ▸ OFE.equiv_prod_ext (CMRA.pcore_op_left ha) (CMRA.pcore_op_left hb)
+    (Option.some.inj hh) ▸ Prod.ext (CMRA.pcore_op_left ha) (CMRA.pcore_op_left hb)
   pcore_idem {x cx} h := by
     have ⟨a, ha, this⟩ := Option.bind_eq_some_iff.mp h
     have ⟨b, hb, hcx⟩ := Option.bind_eq_some_iff.mp this
     have hcxeq : (a, b) = cx := Option.some.inj hcx
     subst hcxeq
-    have ⟨a', ha', ea'⟩ := equiv_some (CMRA.pcore_idem ha)
-    have ⟨b', hb', eb'⟩ := equiv_some (CMRA.pcore_idem hb)
+    have ⟨a', ha', ea'⟩ := eq_some (CMRA.pcore_idem ha)
+    have ⟨b', hb', eb'⟩ := eq_some (CMRA.pcore_idem hb)
     simp [Prod.pcore, ha', hb']; exact ⟨ea', eb'⟩
   pcore_op_mono {x cx} h y := by
     have ⟨a, ha, this⟩ := Option.bind_eq_some_iff.mp h
@@ -1759,8 +1744,8 @@ instance cmraProd : CMRA (α × β) where
     subst hcxeq
     have ⟨cy₁, hcy₁⟩ := CMRA.pcore_op_mono ha y.fst
     have ⟨cy₂, hcy₂⟩ := CMRA.pcore_op_mono hb y.snd
-    have ⟨a', ha', ea'⟩ := equiv_some hcy₁
-    have ⟨b', hb', eb'⟩ := equiv_some hcy₂
+    have ⟨a', ha', ea'⟩ := eq_some hcy₁
+    have ⟨b', hb', eb'⟩ := eq_some hcy₂
     refine ⟨(cy₁, cy₂), ?_⟩
     simp [Prod.pcore, ha', hb']; exact ⟨ea', eb'⟩
   extend {n x y₁ y₂} := fun ⟨vx₁, vx₂⟩ e =>

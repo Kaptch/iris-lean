@@ -154,7 +154,7 @@ theorem siPure_mono_bi [Sbi PROP] {Pi Qi : SiProp}
 
 #rocq_ignore si_pure_mono' "Use siPure_mono."
 #rocq_ignore si_pure_flip_mono' "Use siPure_mono."
-#rocq_ignore si_emp_valid_proper "Derivable from siEmpValid_ne with NonExpansive.eqv."
+#rocq_ignore si_emp_valid_proper "Derivable from siEmpValid_ne with NonExpansive.congr."
 #rocq_ignore si_emp_valid_mono' "Use siEmpValid_mono."
 #rocq_ignore si_emp_valid_flip_mono' "Use siEmpValid_mono."
 

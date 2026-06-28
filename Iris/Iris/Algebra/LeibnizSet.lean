@@ -51,7 +51,7 @@ theorem DisjointLeibnizSet.exist_set_of_mem [LawfulSet S A] {x : DisjointLeibniz
   | .error => by simp [Membership.mem] at h
   | .valid x' => ⟨x', rfl⟩
 
-theorem DisjointLeibnizSet.mem_of_eqv [LawfulSet S A] {a b : DisjointLeibnizSet S}
+theorem DisjointLeibnizSet.mem_of_eq [LawfulSet S A] {a b : DisjointLeibnizSet S}
     (eqv : a = b) (mx : x ∈ a) : x ∈ b :=
   match a, b with
   | .error, _ => False.elim mx
@@ -178,7 +178,7 @@ theorem not_mem_of_mem_and_valid_op_left {x y : DisjointLeibnizSet S} (v : ✓ x
 
 theorem not_mem_of_mem_and_valid_op_right {x y : DisjointLeibnizSet S}
   (v : ✓ x • y) {p : A} (m : p ∈ y)
-    : ¬ p ∈ x := not_mem_of_mem_and_valid_op_left ((OFE.Equiv.valid CMRA.comm).mp v) m
+    : ¬ p ∈ x := not_mem_of_mem_and_valid_op_left ((valid_iff CMRA.comm).mp v) m
 
 theorem localUpdate_dealloc {X Y : S} : (valid X, valid Y) ~l~> (valid (X \ Y), valid ∅) := by
   refine LocalUpdate.total_valid fun vx vy inc => ?_
@@ -319,7 +319,7 @@ instance : UCMRA (LeibnizSet S) where
 
 theorem op_union (X Y : S) : (valid X) • (valid Y) = valid (X ∪ Y) := by simp [op]
 
-theorem core_equiv (X : LeibnizSet S) : core X = X := by
+theorem core_eq (X : LeibnizSet S) : core X = X := by
   change (pcore X).getD X = X
   simp [pcore]
 

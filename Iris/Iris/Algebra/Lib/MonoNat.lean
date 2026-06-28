@@ -72,14 +72,14 @@ instance {l : MaxNat} : CMRA.CoreId (●MN□ l : MonoNat) := by
 theorem auth_dfrac_op (dq1 dq2 : DFrac) (n : MaxNat) :
   (●MN{dq1 • dq2} n : MonoNat) = (●MN{dq1} n) • (●MN{dq2} n) := by
   refine CMRA.comm.trans ?_
-  refine (CMRA.op_right_eqv _ Auth.auth_dfrac_op).trans ?_
+  refine (CMRA.op_right_congr _ Auth.auth_dfrac_op).trans ?_
   refine CMRA.comm.trans ?_
   refine CMRA.assoc.symm.trans ?_
-  refine (CMRA.op_right_eqv _ CMRA.comm).trans ?_
-  refine (CMRA.op_right_eqv _ (OFE.Equiv.op_l (CMRA.op_self (◯ n)).symm)).trans ?_
-  refine (CMRA.op_right_eqv _ CMRA.assoc.symm).trans ?_
+  refine (CMRA.op_right_congr _ CMRA.comm).trans ?_
+  refine (CMRA.op_right_congr _ (CMRA.op_left_congr _ (CMRA.op_self (◯ n)).symm)).trans ?_
+  refine (CMRA.op_right_congr _ CMRA.assoc.symm).trans ?_
   refine CMRA.assoc.trans ?_
-  refine CMRA.op_right_eqv _ CMRA.comm
+  refine CMRA.op_right_congr _ CMRA.comm
 
 @[rocq_alias mono_nat_lb_op]
 theorem lb_op (n1 n2 : MaxNat) :
@@ -91,7 +91,7 @@ theorem auth_lb_op (dq : DFrac) (n : MaxNat) :
   (●MN{dq} n : MonoNat) = (●MN{dq} n) • (◯MN n) := by
   refine .trans ?_ CMRA.assoc
   simp only [lb, ←Auth.frag_op]
-  refine CMRA.op_right_eqv _ ?_
+  refine CMRA.op_right_congr _ ?_
   simp [CMRA.op, Add.add]
 
 @[rocq_alias mono_nat_lb_op_le_l]
@@ -118,13 +118,13 @@ theorem auth_dfrac_op_valid (dq1 dq2 : DFrac) (n1 n2 : MaxNat) :
   constructor
   · intro h
     unfold auth at h
-    replace h := CMRA.valid_of_eqv (CMRA.assoc.symm.trans <| (CMRA.op_right_eqv _ <|
-      CMRA.assoc.trans <| (CMRA.op_left_eqv _ CMRA.comm).trans CMRA.assoc.symm).trans
+    replace h := CMRA.valid_of_eq (CMRA.assoc.symm.trans <| (CMRA.op_right_congr _ <|
+      CMRA.assoc.trans <| (CMRA.op_left_congr _ CMRA.comm).trans CMRA.assoc.symm).trans
       CMRA.assoc) h
     have ⟨hdq, heq, _⟩ := Auth.auth_dfrac_op_valid.mp (CMRA.valid_op_left h)
     exact ⟨hdq, heq⟩
   · rintro ⟨hdq, rfl⟩
-    refine CMRA.valid_of_eqv ?_ (Auth.both_dfrac_valid_discrete.mpr ⟨hdq, CMRA.inc_refl n1, trivial⟩)
+    refine CMRA.valid_of_eq ?_ (Auth.both_dfrac_valid_discrete.mpr ⟨hdq, CMRA.inc_refl n1, trivial⟩)
     exact auth_dfrac_op dq1 dq2 n1
 
 @[rocq_alias mono_nat_auth_op_valid]

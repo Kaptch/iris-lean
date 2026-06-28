@@ -281,17 +281,17 @@ def op : Agree α → Agree α → Agree α :=
 @[rocq_alias agree_comm]
 theorem op_comm {x y : Agree α} : op x y = op y x := by
   induction x with | _ x => induction y with | _ y =>
-  exact OFE.equiv_dist.mpr fun n => Raw.op_comm n
+  exact OFE.eq_iff_forall_dist.mpr fun n => Raw.op_comm n
 
 theorem op_commN {x y : Agree α} : op x y ≡{n}≡ op y x := OFE.Dist.of_eq op_comm
 
 @[rocq_alias agree_assoc]
 theorem op_assoc {x y z : Agree α} : op x (op y z) = op (op x y) z := by
   induction x with | _ x => induction y with | _ y => induction z with | _ z =>
-  exact OFE.equiv_dist.mpr fun n => Raw.op_assoc n
+  exact OFE.eq_iff_forall_dist.mpr fun n => Raw.op_assoc n
 
 theorem op_idemp {x : Agree α} : op x x = x := by
-  induction x with | _ x => exact OFE.equiv_dist.mpr fun n => Raw.idemp n
+  induction x with | _ x => exact OFE.eq_iff_forall_dist.mpr fun n => Raw.idemp n
 
 @[rocq_alias agree_validN_ne]
 theorem validN_ne {x y : Agree α} : x ≡{n}≡ y → validN n x → validN n y := by
@@ -324,7 +324,7 @@ theorem op_invN {x y : Agree α} : validN n (op x y) → x ≡{n}≡ y := by
 @[rocq_alias agree_op_inv]
 theorem op_inv {x y : Agree α} : valid (op x y) → x = y := by
   induction x with | _ x => induction y with | _ y =>
-  exact fun h => OFE.equiv_dist.mpr (Raw.op_inv h)
+  exact fun h => OFE.eq_iff_forall_dist.mpr (Raw.op_inv h)
 
 @[rocq_alias agree_cmra_mixin]
 instance instCMRA : CMRA (Agree α) where
@@ -369,8 +369,8 @@ instance : CMRA.IsTotal (Agree α) where
 @[rocq_alias agree_idemp]
 theorem idemp {x : Agree α} : x • x = x := op_idemp
 
-#rocq_ignore agree_validN_proper "Derivable from Agree.validN_ne using NonExpansive.eqv"
-#rocq_ignore agree_op_proper "Derivable from Agree.op_ne₂ using NonExpansive₂.eqv"
+#rocq_ignore agree_validN_proper "Derivable from Agree.validN_ne using NonExpansive.congr"
+#rocq_ignore agree_op_proper "Derivable from Agree.op_ne₂ using NonExpansive₂.congr"
 #rocq_ignore to_agree_op_inv "Use the general op_invN theorem."
 #rocq_ignore to_agree_op_invN "Use the general op_inv theorem."
 
@@ -378,13 +378,13 @@ theorem idemp {x : Agree α} : x • x = x := op_idemp
 instance instCMRADiscrete [OFE.Discrete α] : CMRA.Discrete (Agree α) where
   discrete_0 {x y} h := by
     induction x with | _ x => induction y with | _ y =>
-    exact OFE.equiv_dist.mpr (Raw.discrete_0 h)
+    exact OFE.eq_iff_forall_dist.mpr (Raw.discrete_0 h)
   discrete_valid {x} h := by induction x with | _ x => exact Raw.discrete_valid h
 
 instance instDiscrete [OFE.Discrete α] : OFE.Discrete (Agree α) where
   discrete_0 {x y} h := by
     induction x with | _ x => induction y with | _ y =>
-    exact OFE.equiv_dist.mpr (Raw.discrete_0 h)
+    exact OFE.eq_iff_forall_dist.mpr (Raw.discrete_0 h)
 
 @[rocq_alias agree_includedN]
 theorem includedN {x y : Agree α} : x ≼{n} y ↔ y ≡{n}≡ y • x := by
@@ -399,7 +399,7 @@ theorem includedN {x y : Agree α} : x ≼{n} y ↔ y ≡{n}≡ y • x := by
 
 @[rocq_alias agree_included]
 theorem included {x y : Agree α} : x ≼ y ↔ y = y • x :=
-  ⟨fun ⟨z, h⟩ => OFE.equiv_dist.mpr fun n => includedN.mp ⟨z, OFE.Dist.of_eq h⟩,
+  ⟨fun ⟨z, h⟩ => OFE.eq_iff_forall_dist.mpr fun _ => includedN.mp ⟨z, OFE.Dist.of_eq h⟩,
    fun h => ⟨y, h.trans op_comm⟩⟩
 
 @[rocq_alias agree_valid_includedN]
@@ -417,7 +417,7 @@ theorem valid_included {x y : Agree α} : ✓ y → x ≼ y → x = y := by
   have heq' : x = z := op_inv <| (CMRA.valid_iff heq).mp hval
   calc
     x = x • x := idemp.symm
-    _ = x • z := CMRA.op_right_eqv x heq'
+    _ = x • z := CMRA.op_right_congr x heq'
     _ = y := heq.symm
 
 set_option synthInstance.checkSynthOrder false in
@@ -437,7 +437,7 @@ theorem toAgree_def {a : α} : toAgree a = Agree.mk (Agree.Raw.toAgree a) := rfl
 instance instNonExpansive_toAgree : OFE.NonExpansive (@toAgree α _) where
   ne n x₁ x₂ heq := by constructor <;> simp_all [Agree.Raw.toAgree]
 
-#rocq_ignore to_agree_proper "Derivable from instNonExpansive_toAgree with NonExpansive.eqv"
+#rocq_ignore to_agree_proper "Derivable from instNonExpansive_toAgree with NonExpansive.congr"
 
 @[rocq_alias to_agree_injN]
 theorem Agree.toAgree_injN {a b : α} : toAgree a ≡{n}≡ toAgree b → a ≡{n}≡ b :=
@@ -445,7 +445,7 @@ theorem Agree.toAgree_injN {a b : α} : toAgree a ≡{n}≡ toAgree b → a ≡{
 
 @[rocq_alias to_agree_inj]
 theorem Agree.toAgree_inj {a b : α} : toAgree a = toAgree b → a = b := by
-  simp only [OFE.equiv_dist]
+  simp only [OFE.eq_iff_forall_dist]
   exact fun heq n => toAgree_injN (heq n)
 
 @[simp] theorem Agree.toAgree_validN {a : α} : ✓{n} toAgree a := Raw.toAgree_validN (a := a) (n := n)
@@ -460,7 +460,7 @@ theorem Agree.toAgree_uninjN {x : Agree α} : ✓{n} x → ∃ a, toAgree a ≡{
 @[rocq_alias to_agree_uninj]
 theorem Agree.toAgree_uninj {x : Agree α} : ✓ x → ∃ a, toAgree a = x := by
   induction x with | _ x =>
-  exact fun h => (Raw.toAgree_uninj h).imp fun a hd => OFE.equiv_dist.mpr hd
+  exact fun h => (Raw.toAgree_uninj h).imp fun a hd => OFE.eq_iff_forall_dist.mpr hd
 
 instance toAgree.ne : OFE.NonExpansive (toAgree : α → Agree α) := instNonExpansive_toAgree
 
@@ -510,7 +510,7 @@ theorem toAgree_included {a b : α} : toAgree a ≼ toAgree b ↔ a = b := by
   · exact toAgree_inj (valid_included (fun _ => trivial) h)
   · exists toAgree a
     calc
-      toAgree b = toAgree a := OFE.NonExpansive.eqv h.symm
+      toAgree b = toAgree a := OFE.NonExpansive.congr h.symm
       _         = toAgree a • toAgree a := idemp.symm
 
 @[simp, rocq_alias to_agree_included_L]
@@ -529,19 +529,17 @@ theorem toAgree_op_validN_iff_dist {a b : α} :
     exact this.symm.validN.mp trivial
 
 @[rocq_alias to_agree_op_valid]
-theorem toAgree_op_valid_iff_equiv {a : α} : ✓ (toAgree a • toAgree b) ↔ a = b := by
-  simp [OFE.equiv_dist, CMRA.valid_iff_validN, toAgree_op_validN_iff_dist]
+theorem toAgree_op_valid_iff_eq {a : α} : ✓ (toAgree a • toAgree b) ↔ a = b := by
+  simp [OFE.eq_iff_forall_dist, CMRA.valid_iff_validN, toAgree_op_validN_iff_dist]
 
 @[rocq_alias to_agree_discrete]
 instance toAgree.is_discrete {a : α} [OFE.DiscreteE a] : OFE.DiscreteE (toAgree a) where
   discrete {y} h := by
-    induction y with | _ y => exact OFE.equiv_dist.mpr (Raw.toAgree_discrete h)
+    induction y with | _ y => exact OFE.eq_iff_forall_dist.mpr (Raw.toAgree_discrete h)
 
 end Agree
 
-@[rocq_alias to_agree_op_valid_L]
-theorem toAgree_op_valid_iff_eq {a : α} :
-    ✓ (toAgree a • toAgree b) ↔ a = b := Agree.toAgree_op_valid_iff_equiv
+#rocq_ignore to_agree_op_valid_L "Now `=`; subsumed by `toAgree_op_valid_iff_eq`."
 
 #rocq_ignore to_agree_op_inv_L "Use toAgree_op_valid_iff_eq"
 
@@ -569,7 +567,7 @@ instance instNonExpansive_AgreeMap' : OFE.NonExpansive (Agree.map' f) where
     induction x with | _ x => induction y with | _ y =>
     exact Raw.map'_ne (Agree.dist_mk.mp h)
 
-#rocq_ignore agree_map_proper "Derivable from instNonExpansive_AgreeMap' with NonExpansive.eqv"
+#rocq_ignore agree_map_proper "Derivable from instNonExpansive_AgreeMap' with NonExpansive.congr"
 
 variable (f) in
 @[rocq_alias agree_map_morphism]
@@ -612,7 +610,7 @@ theorem Agree.map_ne {f g : α → β} [OFE.NonExpansive f] [OFE.NonExpansive g]
 @[rocq_alias agree_map_ext]
 theorem Agree.agree_map_ext {f g : α → β} [OFE.NonExpansive f] [OFE.NonExpansive g] {x : Agree α}
     (H : ∀ a, f a = g a) : map f x = map g x :=
-  OFE.equiv_dist.mpr fun _ => map_ne (H · |>.dist)
+  OFE.eq_iff_forall_dist.mpr fun _ => map_ne (H · |>.dist)
 
 @[rocq_alias agree_map_id]
 theorem Agree.map_id (x : Agree α) : Agree.map id x = x := by

@@ -44,12 +44,12 @@ scoped notation "◯E " a => ExclAuth.frag a
 instance auth_ne : NonExpansive (auth (A := A)) where
   ne _ _ _ h := Auth.auth_ne.ne (some_dist_some.mpr h)
 
-#rocq_ignore excl_auth_auth_proper "Derivable from auth_ne with NonExpansive.eqv"
+#rocq_ignore excl_auth_auth_proper "Derivable from auth_ne with NonExpansive.congr"
 
 @[rocq_alias excl_auth_frag_ne]
 instance frag_ne : NonExpansive (frag (A := A)) where
   ne _ _ _ h := Auth.frag_ne.ne (some_dist_some.mpr h)
-#rocq_ignore excl_auth_frag_proper "Derivable from frag_ne with NonExpansive.eqv"
+#rocq_ignore excl_auth_frag_proper "Derivable from frag_ne with NonExpansive.congr"
 
 @[rocq_alias excl_auth_auth_discrete]
 instance auth_discrete {a : A} [DiscreteE a] : DiscreteE (●E a) :=
@@ -76,7 +76,7 @@ theorem agreeN {a b : A} (h : ✓{n} (●E a) • ◯E b) : a ≡{n}≡ b :=
 
 @[rocq_alias excl_auth_agree]
 theorem agree {a b : A} (h : ✓ (●E a) • ◯E b) : a = b :=
-  equiv_dist.mpr fun _ => agreeN (Valid.validN h)
+  eq_iff_forall_dist.mpr fun _ => agreeN (Valid.validN h)
 
 @[rocq_alias excl_auth_agree_L]
 theorem agree_L {a b : A} (h : ✓ (●E a) • ◯E b) : a = b :=

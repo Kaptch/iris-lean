@@ -156,7 +156,7 @@ instance wp_ne {s : Stuckness} {E} {e : Expr} :
       refine BI.sep_ne.ne ?_ .rfl
       exact IH m n_m <| OFE.dist_lt HΦ n_m
 
-#rocq_ignore wp_proper "Derivable using NonExpansive.eqv"
+#rocq_ignore wp_proper "Derivable using NonExpansive.congr"
 
 @[rocq_alias wp_contractive]
 theorem wp_contractive (s : Stuckness) E (e : Expr) (h : toVal e = none) :

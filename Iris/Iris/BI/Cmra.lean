@@ -33,7 +33,7 @@ def internalCmraValid (a : A) : PROP := siPure (cmraValid a)
 instance internalCmraValid_ne : NonExpansive (internalCmraValid (PROP := PROP) (A := A)) where
   ne _ _ _ h := siPure_ne.ne (instNonExpansiveCmraValid.ne h)
 
-#rocq_ignore internal_cmra_valid_proper "Derivable from internalCmraValid_ne with NonExpansive.eqv"
+#rocq_ignore internal_cmra_valid_proper "Derivable from internalCmraValid_ne with NonExpansive.congr"
 
 @[rocq_alias internal_cmra_valid_intro]
 theorem internalCmraValid_intro {P : PROP} {a : A} (h : Valid a) :
@@ -120,7 +120,7 @@ instance internalCmraIncluded_ne :
     refine siPure_ne.ne ?_
     apply (exists_ne (fun a => NonExpansive₂.ne hy (op_commN.trans ((op_ne.ne hx).trans op_commN))))
 
-#rocq_ignore internal_included_proper "Derivable from internalCmraIncluded_ne with NonExpansive.eqv"
+#rocq_ignore internal_included_proper "Derivable from internalCmraIncluded_ne with NonExpansive.congr"
 
 @[rocq_alias internal_included_intro]
 theorem internalCmraIncluded_intro {P : PROP} {a b : A} (h : a ≼ b) :

@@ -317,7 +317,7 @@ instance embed_timeless [BiEmbedLater PROP1 PROP2] (P : PROP1) [Timeless P] :
 /-! ### Monoid homomorphisms -/
 
 /-- Cross-type `MonoidHomomorphism` for `⎡·⎤` w.r.t. OFE equivalence (mirrors
-`MonoidHomomorphism.ofEquiv`, which is single-type). -/
+`MonoidHomomorphism.ofEq`, which is single-type). -/
 @[reducible] def mkEmbedHom {op₁ : PROP1 → PROP1 → PROP1} {op₂ : PROP2 → PROP2 → PROP2}
     {u₁ : PROP1} {u₂ : PROP2} [MonoidOps op₁ u₁] [MonoidOps op₂ u₂]
     (hop : ∀ {x y}, (embed (op₁ x y) : PROP2) = op₂ (embed x) (embed y))

@@ -126,13 +126,14 @@ theorem auth_dist_inj [UCMRA B] {q1 q2 : DFrac} {a1 a2 : A} {n}
   ⟨auth_inj_frac H, dist_of_auth_dist H⟩
 
 @[rocq_alias view_auth_inj]
-theorem auth_eqv_inj [UCMRA B] {q1 q2 : DFrac} {a1 a2 : A}
+theorem auth_eq_inj [UCMRA B] {q1 q2 : DFrac} {a1 a2 : A}
     (H : (●V{q1} a1 : View R) = ●V{q2} a2) : q1 = q2 ∧ a1 = a2 := by
-  refine ⟨(auth_dist_inj (n := 0) H.dist).1, OFE.equiv_dist.mpr fun n => ?_⟩
+  refine ⟨(auth_dist_inj (n := 0) H.dist).1, OFE.eq_iff_forall_dist.mpr fun n => ?_⟩
   exact (auth_dist_inj H.dist).2
 
+omit [OFE B] in
 @[rocq_alias view_frag_inj]
-theorem frag_eqv_inj [UCMRA B] {b1 b2 : B}
+theorem frag_eq_inj [UCMRA B] {b1 b2 : B}
     (H : (◯V b1 : View R) = ◯V b2) : b1 = b2 := congrArg View.frag H
 
 @[rocq_alias view_frag_dist_inj]
@@ -171,7 +172,7 @@ instance auth_ne {dq : DFrac} : NonExpansive (Auth dq : A → View R) where
     simp only
     exact OFE.NonExpansive.ne H
 
-#rocq_ignore view_auth_proper "Derivable from auth_ne with NonExpansive.eqv"
+#rocq_ignore view_auth_proper "Derivable from auth_ne with NonExpansive.congr"
 
 instance auth_ne₂ : NonExpansive₂ (Auth : DFrac → A → View R) where
   ne _ _ _ Hq _ _ Hf := by
@@ -184,7 +185,7 @@ instance auth_ne₂ : NonExpansive₂ (Auth : DFrac → A → View R) where
 instance frag_ne : NonExpansive (Frag : B → View R) where
   ne _ _ _ H := mk.ne.ne .rfl H
 
-#rocq_ignore view_frag_proper "Derivable from frag_ne with NonExpansive.eqv"
+#rocq_ignore view_frag_proper "Derivable from frag_ne with NonExpansive.congr"
 
 @[simp]
 def Valid (v : View R) : Prop :=
@@ -256,13 +257,13 @@ instance : CMRA (View R) where
         refine .trans Agree.idemp.symm.dist ?_
         exact CMRA.op_ne.ne <| Agree.op_invN (Agree.validN_ne H.symm trivial)
       · exact mono Hr .rfl (CMRA.incN_op_left n b1 b2) n.le_refl
-  assoc := NonExpansive₂.eqv CMRA.assoc CMRA.assoc
-  comm := NonExpansive₂.eqv CMRA.comm CMRA.comm
+  assoc := NonExpansive₂.congr CMRA.assoc CMRA.assoc
+  comm := NonExpansive₂.congr CMRA.comm CMRA.comm
   pcore_op_left {x _} := by
     simp only [Pcore, Option.some.injEq]
-    exact fun H => H ▸ NonExpansive₂.eqv (CMRA.core_op x.auth) (CMRA.core_op x.frag)
+    exact fun H => H ▸ NonExpansive₂.congr (CMRA.core_op x.auth) (CMRA.core_op x.frag)
   pcore_idem {_ cx} := by
-    simp only [Pcore, Option.some.injEq, OFE.some_eqv_some]
+    simp only [Pcore, Option.some.injEq]
     intro H; subst H
     congr 1 <;> exact CMRA.core_idem _
   pcore_op_mono := by
@@ -322,7 +323,7 @@ instance [Discrete A] [CMRA.Discrete B] [IsViewRelDiscrete R] : CMRA.Discrete (V
     split
     · rintro ⟨H1, ⟨a, H2, H3⟩⟩
       refine ⟨H1, fun n => ⟨a, ⟨?_, ?_⟩⟩⟩
-      · exact equiv_dist.mp (OFE.Discrete.discrete_0 H2) _
+      · exact eq_iff_forall_dist.mp (OFE.Discrete.discrete_0 H2) _
       · exact IsViewRelDiscrete.discrete _ _ _ H3
     · exact fun ⟨a, H⟩ _ => ⟨a, IsViewRelDiscrete.discrete _ _ _ H⟩
 
@@ -331,13 +332,13 @@ instance : UCMRA (View R) where
   unit := ⟨UCMRA.unit, UCMRA.unit⟩
   unit_valid := IsViewRel.rel_unit
   unit_left_id := by intro x; cases x; simp [CMRA.op, Op]; congr 1 <;> exact UCMRA.unit_left_id
-  pcore_unit := by simp [CMRA.pcore, Pcore]; constructor <;> exact CMRA.core_eqv_self UCMRA.unit
+  pcore_unit := by simp [CMRA.pcore, Pcore]; constructor <;> exact CMRA.core_eq_self UCMRA.unit
 
 #rocq_ignore view_empty_instance "Inlined in the UCMRA instance"
 #rocq_ignore view_ucmra_mixin "Not needed"
 
 @[rocq_alias view_auth_dfrac_op]
-theorem auth_op_auth_eqv : (●V{dq1 • dq2} a : View R) = (●V{dq1} a : View R) • ●V{dq2} a := by
+theorem auth_op_auth_eq : (●V{dq1 • dq2} a : View R) = (●V{dq1} a : View R) • ●V{dq2} a := by
   simp only [Auth, CMRA.op, Op, optionOp, Prod.op]
   congr 1
   · exact congrArg some (Prod.ext rfl Agree.op_idemp.symm)
@@ -350,7 +351,7 @@ instance isOp_view_auth_dfrac {dq dq1 dq2 : DFrac} {a : A}
     IsOp io1 (●V{dq} a : View R) io2 (●V{dq1} a) io3 (●V{dq2} a) where
   is_op := by
     rw [h.is_op]
-    apply auth_op_auth_eqv
+    apply auth_op_auth_eq
 
 @[rocq_alias view_frag_op]
 theorem frag_op_eq : (◯V (b1 • b2) : View R) = ((◯V b1) • ◯V b2 : View R) := rfl
@@ -358,7 +359,7 @@ theorem frag_op_eq : (◯V (b1 • b2) : View R) = ((◯V b1) • ◯V b2 : View
 @[rocq_alias view_frag_mono]
 theorem frag_inc_of_inc (H : b1 ≼ b2) : (◯V b1 : View R) ≼ ◯V b2 := by
   rcases H with ⟨c, H⟩
-  refine CMRA.inc_of_inc_of_eqv ?_ (NonExpansive.eqv H.symm)
+  refine CMRA.inc_of_inc_of_eq ?_ (NonExpansive.congr H.symm)
   rw [frag_op_eq]
   exact CMRA.inc_op_left _ _
 
@@ -368,16 +369,16 @@ theorem frag_core : CMRA.core (◯V b : View R) = ◯V (CMRA.core b) := rfl
 @[rocq_alias view_both_core_discarded]
 theorem auth_discard_op_frag_core : CMRA.core ((●V{.discard} a) • ◯V b : View R) = (●V{.discard} a : View R) • ◯V (CMRA.core b) := by
   show CMRA.core _ = _
-  simp only [CMRA.core, CMRA.pcore, Pcore, CMRA.op, Op, optionOp, Prod.pcore, DFrac.pcore,
+  simp only [CMRA.core, CMRA.pcore, Pcore, CMRA.op, Op, optionOp,
     Option.getD_some]
-  congr 1; exact (CMRA.core_ne.eqv UCMRA.unit_left_id (α := B)).trans UCMRA.unit_left_id.symm
+  congr 1; exact (CMRA.core_ne.congr UCMRA.unit_left_id (α := B)).trans UCMRA.unit_left_id.symm
 
 @[rocq_alias view_both_core_frac]
 theorem auth_own_op_frag_core : CMRA.core ((●V{.own q} a) • ◯V b : View R) = ◯V (CMRA.core b) := by
   show CMRA.core _ = _
-  simp only [CMRA.core, CMRA.pcore, Pcore, CMRA.op, Op, optionOp, Prod.pcore, DFrac.pcore,
+  simp only [CMRA.core, CMRA.pcore, Pcore, CMRA.op, Op, optionOp,
     Option.getD_some]
-  congr 1; exact CMRA.core_ne.eqv UCMRA.unit_left_id (α := B)
+  congr 1; exact CMRA.core_ne.congr UCMRA.unit_left_id (α := B)
 
 @[rocq_alias view_auth_core_id]
 instance : CMRA.CoreId (●V{.discard} a : View R) where
@@ -390,7 +391,7 @@ instance [CMRA.CoreId b] : CMRA.CoreId (◯V b : View R) where
   core_id := by
     show CMRA.pcore _ = _
     simp only [CMRA.pcore, Pcore, CMRA.core, Option.getD_some, optionCore]
-    simp; rw [CMRA.pcore_eq_core, Option.getD_some]; exact CMRA.core_eqv_self b
+    simp; rw [CMRA.pcore_eq_core, Option.getD_some]; exact CMRA.core_eq_self b
 
 @[rocq_alias view_both_core_id]
 instance [CMRA.CoreId b] : CMRA.CoreId ((●V{.discard} a : View R) • ◯V b) where
@@ -400,13 +401,13 @@ instance [CMRA.CoreId b] : CMRA.CoreId ((●V{.discard} a : View R) • ◯V b) 
     simp only [CMRA.pcore_eq_core, Option.getD_some]
     simp only [Option.bind, Prod.pcore, Agree.pcore_some, Option.some.injEq]
     congr 1
-    exact ((CMRA.core_ne.eqv UCMRA.unit_left_id (α := B)).trans
-      (CMRA.coreId_iff_core_eqv_self.mp inferInstance)).trans UCMRA.unit_left_id.symm
+    exact ((CMRA.core_ne.congr UCMRA.unit_left_id (α := B)).trans
+      (CMRA.coreId_iff_core_eq_self.mp inferInstance)).trans UCMRA.unit_left_id.symm
 
 @[rocq_alias view_frag_is_op]
 instance {b b1 b2 : B} [h : IsOp io1 b io2 b1 io3 b2] :
     IsOp io1 (◯V b : View R) io2 (◯V b1) io3 (◯V b2) where
-  is_op := NonExpansive.eqv h.is_op
+  is_op := NonExpansive.congr h.is_op
 
 @[rocq_alias view_auth_dfrac_op_invN]
 theorem dist_of_validN_auth (H : ✓{n} ((●V{dq1} a1 : View R) • ●V{dq2} a2)) : a1 ≡{n}≡ a2 := by
@@ -415,12 +416,10 @@ theorem dist_of_validN_auth (H : ✓{n} ((●V{dq1} a1 : View R) • ●V{dq2} a
   exact Agree.validN_ne H.symm trivial
 
 @[rocq_alias view_auth_dfrac_op_inv]
-theorem eqv_of_valid_auth (H : ✓ ((●V{dq1} a1 : View R) • ●V{dq2} a2)) : a1 = a2 :=
-  equiv_dist.mpr fun _ => dist_of_validN_auth H.validN
-
-@[rocq_alias view_auth_dfrac_op_inv_L]
 theorem eq_of_valid_auth (H : ✓ ((●V{dq1} a1 : View R) • ●V{dq2} a2)) : a1 = a2 :=
-  eqv_of_valid_auth H
+  eq_iff_forall_dist.mpr fun _ => dist_of_validN_auth H.validN
+
+#rocq_ignore view_auth_dfrac_op_inv_L "Now `=`; subsumed by `eq_of_valid_auth`."
 
 @[rocq_alias view_auth_dfrac_validN]
 theorem auth_validN_iff : ✓{n} (●V{dq} a : View R) ↔ ✓{n}dq ∧ R n a UCMRA.unit :=
@@ -480,7 +479,7 @@ theorem auth_op_auth_valid_iff : ✓ ((●V{dq1} a1 : View R) • ●V{dq2} a2) 
   refine CMRA.valid_iff_validN.trans ?_
   refine ⟨fun H => ?_, fun H n => ?_⟩
   · let Hn n := (auth_op_auth_validN_iff.mp (H n)).2.1
-    refine ⟨(auth_op_auth_validN_iff.mp (H 0)).1, equiv_dist.mpr Hn, fun n => ?_⟩
+    refine ⟨(auth_op_auth_validN_iff.mp (H 0)).1, eq_iff_forall_dist.mpr Hn, fun n => ?_⟩
     exact (auth_op_auth_validN_iff.mp (H n)).2.2
   · exact auth_op_auth_validN_iff.mpr ⟨H.1, H.2.1.dist, H.2.2 n⟩
 
@@ -516,13 +515,13 @@ theorem auth_incN_auth_op_frag_iff : (●V{dq1} a1 : View R) ≼{n} ((●V{dq2} 
            _ ≼{n} (◯V b) • ((●V{z} a1) • ●V{dq1} a1) := incN_of_incN_of_dist .rfl op_assocN.symm
            _ ≼{n} (◯V b) • ((●V{dq1} a1) • ●V{z} a1) := incN_of_incN_of_dist .rfl (op_ne.ne op_commN)
            _ ≼{n} (◯V b) • ●V{dq1 • z} a1 :=
-              incN_of_incN_of_dist .rfl (op_ne.ne <| equiv_dist.mp (auth_op_auth_eqv.symm) _)
+              incN_of_incN_of_dist .rfl (op_ne.ne <| eq_iff_forall_dist.mp (auth_op_auth_eq.symm) _)
            _ ≼{n} (◯V b) • ●V{dq2} a2 :=
              incN_of_incN_of_dist .rfl (op_ne.ne (NonExpansive₂.ne HRz.symm HRb))
            _ ≼{n} ((●V{dq2} a2) • ◯V b) := incN_of_incN_of_dist .rfl op_commN
     · exists (◯V b)
-      refine (equiv_dist.mp comm _).trans ?_
-      refine (.trans ?_ (equiv_dist.mp comm _))
+      refine (eq_iff_forall_dist.mp comm _).trans ?_
+      refine (.trans ?_ (eq_iff_forall_dist.mp comm _))
       apply CMRA.op_ne.ne
       exact HRa2 ▸NonExpansive₂.ne rfl HRb.symm
 
@@ -531,22 +530,22 @@ open CMRA in
 theorem auth_inc_auth_op_frag_iff : ((●V{dq1} a1 : View R) ≼ (●V{dq2} a2 : View R) • ◯V b) ↔ (dq1 ≼ dq2 ∨ dq1 = dq2) ∧ a1 = a2 := by
   refine ⟨fun H => ⟨?_, ?_⟩, fun H => ?_⟩
   · exact auth_incN_auth_op_frag_iff (n := 0) |>.mp (CMRA.incN_of_inc _ H) |>.1
-  · refine OFE.equiv_dist.mpr (fun n => ?_)
+  · refine OFE.eq_iff_forall_dist.mpr (fun n => ?_)
     exact auth_incN_auth_op_frag_iff |>.mp (CMRA.incN_of_inc _ H) |>.2
   · rcases H with ⟨(⟨q, Hq⟩|Hq), Ha⟩
     · calc (●V{dq1} a1 : View R)
            _ ≼ (●V{dq1} a1) • ((●V{q} a1) • ◯V b) := by exists ((●V{q} a1) • ◯V b)
-           _ ≼ ((●V{dq1} a1) • ●V{q} a1) • ◯V b := inc_of_inc_of_eqv .rfl assoc
-           _ ≼ (◯V b) • ((●V{dq1} a1) • ●V{q} a1) := inc_of_inc_of_eqv .rfl comm
+           _ ≼ ((●V{dq1} a1) • ●V{q} a1) • ◯V b := inc_of_inc_of_eq .rfl assoc
+           _ ≼ (◯V b) • ((●V{dq1} a1) • ●V{q} a1) := inc_of_inc_of_eq .rfl comm
            _ ≼ (◯V b) • ●V{dq1 • q} a1 :=
-             inc_of_inc_of_eqv .rfl <| op_ne.eqv (View.auth_op_auth_eqv.symm)
+             inc_of_inc_of_eq .rfl <| op_ne.congr (View.auth_op_auth_eq.symm)
            _ ≼ (●V{dq2} a2) • ◯V b := by
-             refine inc_of_inc_of_eqv .rfl ?_
-             exact (comm.trans (op_ne.eqv <| NonExpansive₂.eqv Hq Ha.symm)).symm
+             refine inc_of_inc_of_eq .rfl ?_
+             exact (comm.trans (op_ne.congr <| NonExpansive₂.congr Hq Ha.symm)).symm
     · exists (◯V b)
       refine .trans CMRA.comm (.trans ?_ CMRA.comm )
-      apply CMRA.op_ne.eqv
-      exact Hq ▸ NonExpansive₂.eqv rfl Ha.symm
+      apply CMRA.op_ne.congr
+      exact Hq ▸ NonExpansive₂.congr rfl Ha.symm
 
 @[rocq_alias view_auth_includedN]
 theorem auth_one_incN_auth_one_op_frag_iff : (●V a1 : View R) ≼{n} ((●V a2) • ◯V b) ↔ a1 ≡{n}≡ a2 :=
@@ -561,7 +560,7 @@ open CMRA in
 theorem frag_incN_auth_op_frag_iff : (◯V b1 : View R) ≼{n} ((●V{p} a) • ◯V b2) ↔ b1 ≼{n} b2 := by
   refine ⟨?_, ?_⟩
   · rintro ⟨xf, ⟨_, Hb⟩⟩
-    have Hb' : b2 ≡{n}≡ b1 • xf.frag := equiv_dist.mp UCMRA.unit_left_id _ |>.symm.trans Hb
+    have Hb' : b2 ≡{n}≡ b1 • xf.frag := eq_iff_forall_dist.mp UCMRA.unit_left_id _ |>.symm.trans Hb
     refine (incN_iff_right <| Hb'.symm).mp ?_
     exists xf.frag
   · rintro ⟨bf, Hbf⟩
@@ -584,10 +583,10 @@ theorem frag_inc_auth_op_frag_iff : (◯V b1 : View R) ≼ ((●V{p} a) • ◯V
   · rintro ⟨bf, Hbf⟩
     calc (◯V b1 : View R)
          _ ≼ (◯V b1) • ((◯V bf : View R) • ●V{p} a) := ⟨(◯V bf : View R) • ●V{p} a, rfl⟩
-         _ ≼ ((◯V b1) • (◯V bf : View R)) • ●V{p} a := inc_of_inc_of_eqv .rfl assoc
-         _ ≼ (●V{p} a) • ((◯V b1) • (◯V bf : View R)) := inc_of_inc_of_eqv .rfl comm
+         _ ≼ ((◯V b1) • (◯V bf : View R)) • ●V{p} a := inc_of_inc_of_eq .rfl assoc
+         _ ≼ (●V{p} a) • ((◯V b1) • (◯V bf : View R)) := inc_of_inc_of_eq .rfl comm
          _ ≼ (●V{p} a) • ◯V b1 • bf := by rw [frag_op_eq]
-         _ ≼ (●V{p} a) • ◯V b2 := inc_of_inc_of_eqv .rfl (op_ne.eqv (NonExpansive.eqv Hbf.symm))
+         _ ≼ (●V{p} a) • ◯V b2 := inc_of_inc_of_eq .rfl (op_ne.congr (NonExpansive.congr Hbf.symm))
 
 open CMRA in
 @[rocq_alias view_both_dfrac_includedN]
@@ -609,7 +608,7 @@ theorem auth_op_frag_incN_auth_op_frag_iff :
          _ ≼{n} (●V{dq2} a2) • ◯V b2 := by
            refine incN_of_incN_of_dist .rfl  ?_
            refine CMRA.op_ne.ne (NonExpansive.ne ?_)
-           exact H2.trans (equiv_dist.mp comm _) |>.symm
+           exact H2.trans (eq_iff_forall_dist.mp comm _) |>.symm
 
 open CMRA in
 @[rocq_alias view_both_dfrac_included]
@@ -627,11 +626,11 @@ theorem auth_op_frag_inc_auth_op_frag_iff : ((●V{dq1} a1 : View R) • ◯V b1
   · calc ((●V{dq1} a1) • ◯V b1 : View R)
          _ ≼ ((●V{dq2} a2) • ◯V bf) • ◯V b1 :=
            op_mono_left _ <| auth_inc_auth_op_frag_iff.mpr ⟨H0, H1⟩
-         _ ≼ (●V{dq2} a2) • ((◯V bf) • ◯V b1) := inc_of_inc_of_eqv .rfl assoc.symm
+         _ ≼ (●V{dq2} a2) • ((◯V bf) • ◯V b1) := inc_of_inc_of_eq .rfl assoc.symm
          _ ≼ (●V{dq2} a2) • ◯V bf • b1 := .rfl
          _ ≼ (●V{dq2} a2) • ◯V b2 := by
-           refine inc_of_inc_of_eqv .rfl  ?_
-           refine op_ne.eqv (NonExpansive.eqv ?_)
+           refine inc_of_inc_of_eq .rfl  ?_
+           refine op_ne.congr (NonExpansive.congr ?_)
            exact (H2.trans comm).symm
 
 @[rocq_alias view_both_includedN]
@@ -695,14 +694,14 @@ theorem auth_one_op_frag_update (Hup : ∀ n bf, R n a (b • bf) → R n a' (b'
 @[rocq_alias view_update_alloc]
 theorem auth_one_alloc (Hup : ∀ n bf, R n a bf → R n a' (b' • bf)) :
     ((●V a) ~~> ((●V a' : View R) • ◯V b')) := by
-  refine Update.equiv_left CMRA.unit_right_id ?_
+  refine Update.eq_left CMRA.unit_right_id ?_
   refine auth_one_op_frag_update (fun n bf H => Hup n bf <| IsViewRel.mono H .rfl ?_ n.le_refl)
   exact incN_op_right n unit bf
 
 @[rocq_alias view_update_dealloc]
 theorem auth_one_op_frag_dealloc (Hup : (∀ n bf, R n a (b • bf) → R n a' bf)) :
     ((●V a : View R) • ◯V b) ~~> ●V a' := by
-  refine Update.equiv_right CMRA.unit_right_id ?_
+  refine Update.eq_right CMRA.unit_right_id ?_
   refine auth_one_op_frag_update (fun n bf H => ?_)
   refine IsViewRel.mono (Hup n bf H) .rfl ?_ n.le_refl
   exact (unit_left_id_dist bf).to_incN
@@ -710,8 +709,8 @@ theorem auth_one_op_frag_dealloc (Hup : (∀ n bf, R n a (b • bf) → R n a' b
 @[rocq_alias view_update_auth]
 theorem auth_one_update (Hup : ∀ n bf, R n a bf → R n a' bf) :
     (●V a : View R) ~~> ●V a' := by
-  refine Update.equiv_right unit_right_id ?_
-  refine Update.equiv_left  unit_right_id ?_
+  refine Update.eq_right unit_right_id ?_
+  refine Update.eq_left  unit_right_id ?_
   refine auth_one_op_frag_update (fun n bf H => ?_)
   exact IsViewRel.mono (Hup n _ H) .rfl .rfl n.le_refl
 
@@ -853,7 +852,7 @@ theorem map_compose' [OFE A''] [OFE B''] {R'' : ViewRel A'' B''}
   haveI : OFE.NonExpansive (f'.f ∘ f.f) := f'.ne.comp f.ne
   exact map_compose f.f g.f f'.f g'.f v
 
-omit [OFE B] in
+omit [OFE B] [OFE B'] in
 @[rocq_alias view_map_ext]
 theorem map_ext {f1 f2 : A → A'} {g1 g2 : B → B'} [OFE.NonExpansive f1] [OFE.NonExpansive f2]
     (v : View R) (h1 : ∀ a, f1 a = f2 a) (h2 : ∀ b, g1 b = g2 b) :

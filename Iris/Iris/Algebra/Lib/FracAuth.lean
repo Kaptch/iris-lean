@@ -57,13 +57,13 @@ instance frac_one_exclusive (b : A) : Exclusive (fracOne, b) where
 instance auth_ne {dq : DFrac} : NonExpansive (auth dq : A → FracAuth) where
   ne _ _ _ h := Auth.auth_ne.ne ⟨.rfl, h⟩
 
-#rocq_ignore frac_auth_auth_proper "Derivable from auth_ne with NonExpansive.eqv"
+#rocq_ignore frac_auth_auth_proper "Derivable from auth_ne with NonExpansive.congr"
 
 @[rocq_alias frac_auth_frag_ne]
 instance frag_ne {q : Qp} : NonExpansive (frag q : A → FracAuth) where
   ne _ _ _ h := Auth.frag_ne.ne ⟨.rfl, h⟩
 
-#rocq_ignore frac_auth_frag_proper "Derivable from frag_ne with NonExpansive.eqv"
+#rocq_ignore frac_auth_frag_proper "Derivable from frag_ne with NonExpansive.congr"
 
 /-! ## Discrete instances -/
 
@@ -106,7 +106,7 @@ theorem agreeN {dq : DFrac} {a b : A} (h : ✓{n} (●F{dq} a) • ◯F b) : a �
 
 @[rocq_alias frac_auth_agree]
 theorem agree {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a = b :=
-  equiv_dist.mpr fun n => agreeN (valid_iff_validN.mp h n)
+  eq_iff_forall_dist.mpr fun n => agreeN (valid_iff_validN.mp h n)
 
 @[rocq_alias frac_auth_agree_L]
 theorem agree_L {dq : DFrac} {a b : A} (h : ✓ (●F{dq} a) • ◯F b) : a = b :=

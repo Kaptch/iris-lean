@@ -92,7 +92,7 @@ theorem singleton_dist [LawfulPartialMap M K] [DecidableEq K] [OFE V] {n : Nat} 
   simp only [LawfulPartialMap.get?_singleton]
   split <;> simp [h]
 
-theorem singleton_equiv [LawfulPartialMap M K] [DecidableEq K] [OFE V] {x y : V} (h : x = y) (k : K) :
+theorem singleton_eq [LawfulPartialMap M K] [DecidableEq K] [OFE V] {x y : V} (h : x = y) (k : K) :
     PartialMap.singleton (M := M) k x = PartialMap.singleton k y :=
   congrArg (PartialMap.singleton k) h
 
@@ -244,17 +244,7 @@ instance instStoreCMRA : CMRA (M V) where
       cases h1 : get? y1 i <;> cases h2 : get? y2 i <;>
         simp only [Option.bind, h1, h2] at Hz1 Hz2 ⊢ <;>
         cases z1 <;> cases z2 <;>
-        simp only [show (match (none : Option V), (none : Option V) with
-              | some x, some y => some (x • y) | none, x => x | x, none => x) = none from rfl,
-            show ∀ v : V, (match (none : Option V), (some v) with
-              | some x, some y => some (x • y) | none, x => some v | x, none => none) = some v
-              from fun _ => rfl,
-            show ∀ v : V, (match (some v), (none : Option V) with
-              | some x, some y => some (x • y) | none, x => none | x, none => some v) = some v
-              from fun _ => rfl,
-            show ∀ v w : V, (match (some v), (some w) with
-              | some x, some y => some (x • y) | none, x => some w | x, none => some v)
-              = some (v • w) from fun _ _ => rfl] at Hmx ⊢ <;>
+        simp only [] at Hmx ⊢ <;>
         first | exact Hmx | simp_all
     · -- goal: get? (bindAlter z1 y1) i ≡{n}≡ get? y1 i
       rcases hF : extendF i with ⟨z1, z2, Hmx, Hz1, Hz2⟩
@@ -287,7 +277,7 @@ instance instStoreCMRA : CMRA (M V) where
 
 instance instStoreUCMRA : UCMRA (M V) where
   unit := unit
-  unit_valid k := by simp only [valid, unit, get?_empty]; trivial
+  unit_valid k := by simp only [unit, get?_empty]; trivial
   unit_left_id := by
     intro x; apply equiv_iff_eq.mp; intro k
     simp [CMRA.op, op, unit, get?_merge, get?_empty]
@@ -394,7 +384,7 @@ theorem singleton_core_eq [IsoFunMap M K] {i : K} {x : V} {cx} (Hpcore : CMRA.pc
   IsoFunMap.ext (core_singleton_equiv Hpcore)
 
 open Classical in
-theorem singleton_core_eqv {i : K} {x : V} {cx} (Hpcore : CMRA.pcore x = some cx) :
+theorem singleton_core_eq' {i : K} {x : V} {cx} (Hpcore : CMRA.pcore x = some cx) :
     core (singleton i x : M V) = singleton i cx := by
   apply equiv_iff_eq.mp; intro k
   simp [core, CMRA.pcore, get?_singleton, get?_bindAlter]
@@ -494,12 +484,12 @@ theorem exclusive_singleton_inc_iff {m : M V} (He : Exclusive x) (Hv : ✓ m) :
     (singleton i x) ≼ m ↔ (get? m i = some x) := by
   refine singleton_inc_iff.trans ⟨fun ⟨y, Hy, Hxy⟩ => ?_, fun _ => ?_⟩
   · suffices h : x = y by exact Hy.trans (OFE.some_eqv_some.mpr h.symm)
-    exact Option.eqv_of_inc_exclusive Hxy <| valid_get?_valid Hv Hy
+    exact Option.eq_of_inc_exclusive Hxy <| valid_get?_valid Hv Hy
   · exists x
 
 theorem singleton_inc_singleton_iff : (singleton i x : M V) ≼ (singleton i y : M V) ↔ some x ≼ some y := by
   refine singleton_inc_iff.trans ⟨fun ⟨z, Hz, Hxz⟩ => ?_, fun H => ?_⟩
-  · refine inc_of_inc_of_eqv Hxz ?_
+  · refine inc_of_inc_of_eq Hxz ?_
     refine .trans Hz.symm ?_
     exact get?_singleton_eq rfl
   · refine ⟨y, ?_, H⟩
