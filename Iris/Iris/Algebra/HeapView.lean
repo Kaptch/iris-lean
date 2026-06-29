@@ -124,6 +124,8 @@ open Heap OFE View One DFrac CMRA PartialMap Std LawfulPartialMap
 
 variable {K V : Type _} {H : Type _ → Type _} [LawfulPartialMap H K] [CMRA V]
 
+instance instLeibniz [Leibniz V] : Leibniz (HeapView K V H) := inferInstance
+
 /-- Authoritative (fractional) ownership over an entire heap. -/
 def Auth (dq : DFrac) (m : H V) : HeapView K V H := ●V{dq} m
 
@@ -162,29 +164,29 @@ theorem dist_of_validN_auth_op : ✓{n} Auth dp m1 • Auth dq m2 → m1 ≡{n}�
 theorem equiv_of_valid_auth_op : ✓ Auth dp m1 • Auth dq m2 → m1 ≡ m2 :=
   eqv_of_valid_auth
 
-nonrec theorem auth_validN_iff : ✓{n} Auth dq m1 ↔ ✓ dq :=
-  auth_validN_iff.trans <| and_iff_left_of_imp (fun _ => HeapR.unit _ _ _)
+theorem auth_validN_iff : ✓{n} Auth dq m1 ↔ ✓ dq :=
+  View.auth_validN_iff.trans <| and_iff_left_of_imp (fun _ => HeapR.unit _ _ _)
 
-nonrec theorem auth_valid_iff : ✓ Auth dq m1 ↔ ✓ dq :=
-  auth_valid_iff.trans <| and_iff_left_of_imp (fun _ _ => HeapR.unit _ _ _)
+theorem auth_valid_iff : ✓ Auth dq m1 ↔ ✓ dq :=
+  View.auth_valid_iff.trans <| and_iff_left_of_imp (fun _ _ => HeapR.unit _ _ _)
 
 theorem auth_one_valid : ✓ Auth (.own one) m1 := auth_valid_iff.mpr valid_own_one
 
-nonrec theorem auth_op_auth_validN_iff : ✓{n} Auth dp m1 • Auth dq m2 ↔ ✓ dp • dq ∧ m1 ≡{n}≡ m2 :=
-  auth_op_auth_validN_iff.trans <|
+theorem auth_op_auth_validN_iff : ✓{n} Auth dp m1 • Auth dq m2 ↔ ✓ dp • dq ∧ m1 ≡{n}≡ m2 :=
+  View.auth_op_auth_validN_iff.trans <|
   and_congr_right <| fun _ => and_iff_left_of_imp <| fun _ => HeapR.unit _ _ _
 
-nonrec theorem auth_op_auth_valid_iff : ✓ Auth dp m1 • Auth dq m2 ↔ ✓ dp • dq ∧ m1 ≡ m2 :=
-  auth_op_auth_valid_iff.trans <|
+theorem auth_op_auth_valid_iff : ✓ Auth dp m1 • Auth dq m2 ↔ ✓ dp • dq ∧ m1 ≡ m2 :=
+  View.auth_op_auth_valid_iff.trans <|
   and_congr_right <| fun _ => and_iff_left_of_imp <| fun _ _ => HeapR.unit _ _ _
 
-nonrec theorem auth_one_op_auth_one_validN_iff :
+theorem auth_one_op_auth_one_validN_iff :
     ✓{n} Auth (.own one) m1 • Auth (.own one) m2 ↔ False :=
-  auth_one_op_auth_one_validN_iff
+  View.auth_one_op_auth_one_validN_iff
 
-nonrec theorem auth_one_op_auth_one_valid_iff :
+theorem auth_one_op_auth_one_valid_iff :
     ✓ Auth (.own one) m1 • Auth (.own one) m2 ↔ False :=
-  auth_one_op_auth_one_valid_iff
+  View.auth_one_op_auth_one_valid_iff
 
 
 theorem frag_op_eqv : Frag (H := H) k (dp • dq) (v1 • v2) ≡ Frag k dp v1 • Frag k dq v2 := by
@@ -205,10 +207,10 @@ theorem frag_add_op_eqv {q1 q2 : Qp} :
     Frag (H := H) k (.own (q1 + q2)) (v1 • v2) ≡ Frag k (.own q1) v1 • Frag k (.own q2) v2 :=
   frag_op_eqv
 
-nonrec theorem auth_op_frag_validN_iff :
+theorem auth_op_frag_validN_iff :
     ✓{n} Auth dp m1 • Frag k dq v ↔
     ∃ v' dq', ✓ dp ∧ (Std.PartialMap.get? m1 k = some v') ∧ ✓{n} (dq', v') ∧ some (dq, v) ≼{n} some (dq', v') :=
-  auth_op_frag_validN_iff.trans <|
+  View.auth_op_frag_validN_iff.trans <|
     (and_congr_right fun _ => (HeapR.singleton_get_iff ..).trans <|
     exists_congr fun _ => exists_and_left).trans (by grind)
 
@@ -284,8 +286,8 @@ instance [Hdq : CoreId dq] [Hv1 : CoreId v1] : CoreId (Frag (H := H) k dq v1) wh
     · simp only [Option.bind_some, H]
       exact ⟨rfl, some_eqv_some.mp (h ▸ Hv1.core_id)⟩
 
-nonrec theorem frag_validN_iff : ✓{n} Frag (H := H) k dq v1 ↔ ✓ dq ∧ ✓{n} v1 :=
-  frag_validN_iff.trans <| (HeapR.exists_iff_validN ..).trans singleton_validN_iff
+theorem frag_validN_iff : ✓{n} Frag (H := H) k dq v1 ↔ ✓ dq ∧ ✓{n} v1 :=
+  View.frag_validN_iff.trans <| (HeapR.exists_iff_validN ..).trans singleton_validN_iff
 
 theorem frag_valid_iff : ✓ Frag (H := H) k dq v1 ↔ ✓ dq ∧ ✓ v1 := by
   refine (forall_congr' (fun _ => frag_validN_iff)).trans ?_
