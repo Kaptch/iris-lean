@@ -74,15 +74,11 @@ instance : OFE (ReservationMap A H) where
      fun h => ⟨equiv_dist.mpr (h · |>.left), (h 0).right⟩⟩
   dist_lt h lt := ⟨dist_lt h.left lt, dist_lt h.right lt⟩
 
-/-- The token component is always `Leibniz` (a `DisjointLeibnizSet`), so a `ReservationMap` is
-`Leibniz` whenever its data type is. -/
 instance instLeibnizReservationMap [Leibniz A] : Leibniz (ReservationMap A H) where
   eq_of_eqv {x y} h := by
     obtain ⟨hd, ht⟩ := h
-    have h1 := eq_of_eqv hd
-    have h2 := eq_of_eqv ht
     show (⟨x.data, x.token⟩ : ReservationMap A H) = ⟨y.data, y.token⟩
-    rw [h1, h2]
+    rw [eq_of_eqv hd, eq_of_eqv ht]
 
 @[rocq_alias reservation_map_ofe_discrete]
 instance instDiscreteReservationMap [Discrete A] : Discrete (ReservationMap A H) where

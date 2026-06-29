@@ -42,9 +42,9 @@ theorem bigSepM_eqv_of_perm {Φ : K → V → PROP} {m₁ m₂ : M V} (h : m₁ 
   equiv_iff.mp (bigOpM_eqv_of_perm _ h)
 
 /-- A `bigSepM` over the empty map is `emp`. -/
-theorem bigSepM_eqv_empty {Φ : K → V → PROP} {m : M V} (h : m = ∅) :
-    ([∗map] k ↦ v ∈ m, Φ k v) ⊣⊢ emp := by
-  rw [h]; exact bigSepM_empty
+theorem bigSepM_eqv_empty {Φ : K → V → PROP} {m : M V} (h : m ≡ₘ ∅) :
+    ([∗map] k ↦ v ∈ m, Φ k v) ⊣⊢ emp :=
+  (bigSepM_eqv_of_perm h).trans bigSepM_empty
 
 @[rocq_alias big_sepM_singleton]
 theorem bigSepM_singleton {Φ : K → V → PROP} {i : K} {x : V} :

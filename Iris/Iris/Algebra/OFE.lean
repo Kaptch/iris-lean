@@ -417,7 +417,7 @@ instance : OFE Unit where
 
 instance : DiscreteE (() : Unit) := ⟨fun _ => trivial⟩
 
-instance : Leibniz Unit where
+instance instLeibnizUnit : Leibniz Unit where
   eq_of_eqv _ := Subsingleton.elim _ _
 
 instance [OFE α] : OFE (ULift α) where
@@ -550,7 +550,7 @@ instance [OFEFun (β : α → _)] : OFE ((x : α) → β x) where
   equiv_dist {_ _} := by simp [equiv_dist]; apply forall_comm
   dist_lt h1 h2 _ := dist_lt (h1 _) h2
 
-instance [OFEFun (β : α → _)] [∀ x, Leibniz (β x)] : Leibniz ((x : α) → β x) where
+instance instLeibnizForall [OFEFun (β : α → _)] [∀ x, Leibniz (β x)] : Leibniz ((x : α) → β x) where
   eq_of_eqv h := funext fun x => eq_of_eqv (h x)
 
 #rocq_ignore discrete_funO "Use a function type"
