@@ -3,6 +3,8 @@ module
 public import Mathlib.Topology.EMetricSpace.Basic
 public import Mathlib.Topology.MetricSpace.Ultra.Basic
 public import Mathlib.Topology.MetricSpace.Lipschitz
+public import Mathlib.Topology.Sets.Compacts
+public import Mathlib.Topology.MetricSpace.HausdorffDistance
 public import Mathlib.CategoryTheory.Category.Basic
 public import Mathlib.CategoryTheory.ConcreteCategory.Basic
 public import Mathlib.CategoryTheory.ConcreteCategory.Bundled
@@ -10,6 +12,7 @@ public import Mathlib.CategoryTheory.Functor.Basic
 public import Mathlib.CategoryTheory.Equivalence
 public import Mathlib.CategoryTheory.EqToHom
 public import Iris
+public import Iris.Algebra.Hyperspace
 
 @[expose] public section
 
@@ -151,7 +154,6 @@ instance IsUltrametricDist.OFE {X : Type _} [PseudoMetricSpace X]
     linarith [H n, show (1/2 : ℝ) ^ n = 1 / 2 ^ n by simp [div_eq_inv_mul, mul_comm]]
   dist_lt {n x y m} H hlt := H.trans (one_div_pow2_antitone hlt.le)
 
-
 section Nonexpansive
 
 variable {X Y : Type _}
@@ -180,6 +182,9 @@ theorem NonExpansive.lipschitzWith [OFE X] [OFE Y] (f : X → Y) [NonExpansive f
         apply le_csSup (stepSet_bddAbove hfxy)
         exact NonExpansive.ne hn
       · simp [Set.not_nonempty_iff_eq_empty.mp h_ne, csSup_empty]
+
+theorem NonExpansive.continuous [OFE X] [OFE Y] (f : X → Y) [NonExpansive f] : Continuous f :=
+  (NonExpansive.lipschitzWith f).continuous
 
 instance LipschitzWith.toNonExpansive [PseudoMetricSpace X] [IsUltrametricDist X]
     [PseudoMetricSpace Y] [IsUltrametricDist Y] (f : X → Y)
@@ -359,6 +364,33 @@ lemma ofe_rel_of_dist_lt {n : ℕ} {x y : X} (h : ofe_dist x y < 1 / 2 ^ (n + 1)
       linarith
     exact stepSet_down (by omega) (stepSet_sSup_mem heq hS)
 
+lemma ofe_dist_le_succ_of_lt {n : ℕ} {x y : X} (h : ofe_dist x y < 1 / 2 ^ n) :
+    ofe_dist x y ≤ 1 / 2 ^ (n + 1) := by
+  rcases ofe_dist_bisected x y with h0 | ⟨m, hm⟩
+  · rw [h0]; positivity
+  · rw [hm] at h ⊢
+    refine one_div_pow2_antitone (?_ : n + 1 ≤ m)
+    by_contra hlt
+    exact absurd h (not_lt.mpr (one_div_pow2_antitone (by omega)))
+
+lemma ofe_rel_of_dist_le {n : ℕ} {x y : X} (h : ofe_dist x y ≤ 1 / 2 ^ (n + 1)) :
+    x ≡{n + 1}≡ y := by
+  simp only [ofe_dist] at h
+  split_ifs at h with heq
+  · exact heq.dist
+  · have hle : n + 1 ≤ sSup (stepSet x y) := by
+      by_contra hlt
+      push Not at hlt
+      have : (2 : ℝ) ^ sSup (stepSet x y) < 2 ^ (n + 1) := by
+        exact_mod_cast Nat.pow_lt_pow_right (by norm_num) hlt
+      have : (1 : ℝ) / 2 ^ (n + 1) < 1 / 2 ^ sSup (stepSet x y) :=
+        one_div_lt_one_div_of_lt (by positivity) this
+      linarith
+    have hS : (stepSet x y).Nonempty := by
+      by_contra hemp
+      simp [Set.not_nonempty_iff_eq_empty.mp hemp, csSup_empty] at hle
+    exact stepSet_down hle (stepSet_sSup_mem heq hS)
+
 theorem isOpen_iff_ofe {s : Set X} :
     IsOpen s ↔ ∀ x ∈ s, ∃ n : ℕ, ∀ y, x ≡{n}≡ y → y ∈ s := by
   rw [Metric.isOpen_iff]
@@ -516,6 +548,51 @@ theorem compactSpace_iff_isCOFE_finApprox (h0 : ∀ x y : X, x ≡{0}≡ y) :
     haveI : CompleteSpace X := hCS
     exact ⟨hTB.isCompact_of_isClosed isClosed_univ⟩
 
+theorem isComplete_of_chainClosed (s : Set X) (h : ChainClosed s) : IsComplete s := by
+  rw [← completeSpace_coe_iff_isComplete]
+  apply Metric.complete_of_cauchySeq_tendsto
+  intro u hu
+  rw [Metric.cauchySeq_iff] at hu
+  have hN : ∀ m, ∃ N, ∀ i ≥ N, ∀ j ≥ N, dist (u i).val (u j).val < 1 / 2 ^ (m + 1) := by
+    intro m
+    obtain ⟨N, hN⟩ := hu (1 / 2 ^ (m + 1)) (by positivity)
+    exact ⟨N, fun i hi j hj => by simpa [Subtype.dist_eq] using hN i hi j hj⟩
+  let N' : ℕ → ℕ := fun m =>
+    Nat.rec (Classical.choose (hN 0))
+      (fun k acc => max (acc + 1) (Classical.choose (hN (k + 1)))) m
+  have hN'_ge : ∀ m, Classical.choose (hN m) ≤ N' m := by
+    intro m; cases m with
+    | zero => exact le_refl _
+    | succ k => exact le_max_right _ _
+  have hN'_lt_succ : ∀ m, N' m < N' (m + 1) := fun m =>
+    Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (le_max_left _ _)
+  have hN'_mono : StrictMono N' := strictMono_nat_of_lt_succ hN'_lt_succ
+  have hN'_spec : ∀ m i, N' m ≤ i → ∀ j, N' m ≤ j →
+      dist (u i).val (u j).val < 1 / 2 ^ (m + 1) :=
+    fun m i hi j hj =>
+      Classical.choose_spec (hN m) i ((hN'_ge m).trans hi) j ((hN'_ge m).trans hj)
+  let c : Chain X := {
+    chain := fun m => (u (N' m)).val
+    cauchy := fun {n m} hnm =>
+      ofe_rel_of_dist_lt (hN'_spec n (N' m) (hN'_mono.monotone hnm) (N' n) (le_refl _))
+  }
+  obtain ⟨x, hxs, hxrel⟩ := h c (fun n => (u (N' n)).property)
+  refine ⟨⟨x, hxs⟩, Metric.tendsto_atTop.mpr fun ε hε => ?_⟩
+  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
+  refine ⟨N' n, fun k hk => ?_⟩
+  simp only [Subtype.dist_eq]
+  have hck : dist (u k).val (u (N' n)).val < 1 / 2 ^ (n + 1) :=
+    hN'_spec n k hk (N' n) (le_refl _)
+  have hcx : dist (u (N' n)).val x ≤ 1 / 2 ^ n :=
+    ofe_dist_le_of_rel (hxrel n).symm
+  calc dist (u k).val x
+      ≤ max (dist (u k).val (u (N' n)).val) (dist (u (N' n)).val x) :=
+        IsUltrametricDist.dist_triangle_max _ _ _
+    _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) :=
+        max_le_max (hck.le.trans (one_div_pow2_antitone (Nat.le_succ n))) hcx
+    _ = (1 / 2) ^ n := by simp [max_self]
+    _ < ε := hn
+
 theorem isComplete_iff_chain (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
     IsComplete s ↔ ChainClosed s := by
   constructor
@@ -533,50 +610,7 @@ theorem isComplete_iff_chain (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
           IsUltrametricDist.dist_triangle_max _ _ _
       _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) := max_le_max h1 h2
       _ = 1 / 2 ^ n := max_self _
-  · intro h
-    rw [← completeSpace_coe_iff_isComplete]
-    apply Metric.complete_of_cauchySeq_tendsto
-    intro u hu
-    rw [Metric.cauchySeq_iff] at hu
-    have hN : ∀ m, ∃ N, ∀ i ≥ N, ∀ j ≥ N, dist (u i).val (u j).val < 1 / 2 ^ (m + 1) := by
-      intro m
-      obtain ⟨N, hN⟩ := hu (1 / 2 ^ (m + 1)) (by positivity)
-      exact ⟨N, fun i hi j hj => by simpa [Subtype.dist_eq] using hN i hi j hj⟩
-    let N' : ℕ → ℕ := fun m =>
-      Nat.rec (Classical.choose (hN 0))
-        (fun k acc => max (acc + 1) (Classical.choose (hN (k + 1)))) m
-    have hN'_ge : ∀ m, Classical.choose (hN m) ≤ N' m := by
-      intro m; cases m with
-      | zero => exact le_refl _
-      | succ k => exact le_max_right _ _
-    have hN'_lt_succ : ∀ m, N' m < N' (m + 1) := fun m =>
-      Nat.lt_of_lt_of_le (Nat.lt_succ_self _) (le_max_left _ _)
-    have hN'_mono : StrictMono N' := strictMono_nat_of_lt_succ hN'_lt_succ
-    have hN'_spec : ∀ m i, N' m ≤ i → ∀ j, N' m ≤ j →
-        dist (u i).val (u j).val < 1 / 2 ^ (m + 1) :=
-      fun m i hi j hj =>
-        Classical.choose_spec (hN m) i ((hN'_ge m).trans hi) j ((hN'_ge m).trans hj)
-    let c : Chain X := {
-      chain := fun m => (u (N' m)).val
-      cauchy := fun {n m} hnm =>
-        ofe_rel_of_dist_lt (hN'_spec n (N' m) (hN'_mono.monotone hnm) (N' n) (le_refl _))
-    }
-    obtain ⟨x, hxs, hxrel⟩ := h c (fun n => (u (N' n)).property)
-    refine ⟨⟨x, hxs⟩, Metric.tendsto_atTop.mpr fun ε hε => ?_⟩
-    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1 / 2 : ℝ) < 1)
-    refine ⟨N' n, fun k hk => ?_⟩
-    simp only [Subtype.dist_eq]
-    have hck : dist (u k).val (u (N' n)).val < 1 / 2 ^ (n + 1) :=
-      hN'_spec n k hk (N' n) (le_refl _)
-    have hcx : dist (u (N' n)).val x ≤ 1 / 2 ^ n :=
-      ofe_dist_le_of_rel (hxrel n).symm
-    calc dist (u k).val x
-        ≤ max (dist (u k).val (u (N' n)).val) (dist (u (N' n)).val x) :=
-          IsUltrametricDist.dist_triangle_max _ _ _
-      _ ≤ max (1 / 2 ^ n) (1 / 2 ^ n) :=
-          max_le_max (hck.le.trans (one_div_pow2_antitone (Nat.le_succ n))) hcx
-      _ = (1 / 2) ^ n := by simp [max_self]
-      _ < ε := hn
+  · exact isComplete_of_chainClosed s
 
 theorem isCompact_iff_FinApprox (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
     IsCompact s ↔ ChainClosed s ∧ FinApprox s := by
@@ -586,6 +620,315 @@ theorem isCompact_iff_FinApprox (s : Set X) (h0 : ∀ x y : X, x ≡{0}≡ y) :
          fun ⟨hc, htb⟩ => htb.isCompact_of_isComplete hc⟩
 
 end OFETopology
+
+section Hyperspace
+
+open TopologicalSpace
+
+variable {X : Type _} [OFE X]
+
+def chainOfSucc (e : ℕ → X) (h : ∀ k, e (k + 1) ≡{k}≡ e k) : Chain X where
+  chain := e
+  cauchy {n i} hni := by
+    induction hni with
+    | refl => exact .rfl
+    | step hle ih => exact ((h _).le hle).trans ih
+
+def SetDist (n : ℕ) (K L : Set X) : Prop :=
+  (∀ a ∈ K, ∃ b ∈ L, a ≡{n}≡ b) ∧ ∀ b ∈ L, ∃ a ∈ K, a ≡{n}≡ b
+
+theorem SetDist.refl (n : ℕ) (K : Set X) : SetDist n K K :=
+  ⟨fun a ha => ⟨a, ha, .rfl⟩, fun b hb => ⟨b, hb, .rfl⟩⟩
+
+theorem SetDist.symm {n : ℕ} {K L : Set X} (h : SetDist n K L) : SetDist n L K :=
+  ⟨fun b hb => let ⟨a, ha, hab⟩ := h.2 b hb; ⟨a, ha, hab.symm⟩,
+    fun a ha => let ⟨b, hb, hab⟩ := h.1 a ha; ⟨b, hb, hab.symm⟩⟩
+
+theorem SetDist.trans {n : ℕ} {K L M : Set X} (h₁ : SetDist n K L) (h₂ : SetDist n L M) :
+    SetDist n K M :=
+  ⟨fun a ha =>
+    let ⟨b, hb, hab⟩ := h₁.1 a ha
+    let ⟨c, hc, hbc⟩ := h₂.1 b hb
+    ⟨c, hc, hab.trans hbc⟩,
+   fun c hc =>
+    let ⟨b, hb, hbc⟩ := h₂.2 c hc
+    let ⟨a, ha, hab⟩ := h₁.2 b hb
+    ⟨a, ha, hab.trans hbc⟩⟩
+
+theorem SetDist.le {n m : ℕ} {K L : Set X} (h : SetDist n K L) (hmn : m ≤ n) :
+    SetDist m K L :=
+  ⟨fun a ha => let ⟨b, hb, hab⟩ := h.1 a ha; ⟨b, hb, hab.le hmn⟩,
+    fun b hb => let ⟨a, ha, hab⟩ := h.2 b hb; ⟨a, ha, hab.le hmn⟩⟩
+
+instance : OFE (NonemptyCompacts X) where
+  Equiv K L := ∀ n, SetDist n (K : Set X) L
+  Dist n K L := SetDist n (K : Set X) L
+  dist_eqv := ⟨fun _ => SetDist.refl _ _, SetDist.symm, SetDist.trans⟩
+  equiv_dist := Iff.rfl
+  dist_lt h hlt := h.le hlt.le
+
+theorem NonemptyCompacts.dist_def {n : ℕ} {K L : NonemptyCompacts X} :
+    K ≡{n}≡ L ↔ SetDist n (K : Set X) L := Iff.rfl
+
+theorem NonemptyCompacts.equiv_def {K L : NonemptyCompacts X} :
+    (K ≡ L) ↔ ∀ n, SetDist n (K : Set X) L := Iff.rfl
+
+theorem ofe_dist_eq_hausdorffDist (K L : NonemptyCompacts X) :
+    ofe_dist K L = Metric.hausdorffDist (K : Set X) (L : Set X) := by
+  have hfin := Metric.hausdorffEDist_ne_top_of_nonempty_of_bounded K.nonempty L.nonempty
+    K.isCompact.isBounded L.isCompact.isBounded
+  have hle : ∀ n, SetDist n (K : Set X) L → Metric.hausdorffDist (K : Set X) L ≤ 1 / 2 ^ n :=
+    fun n h => Metric.hausdorffDist_le_of_mem_dist (by positivity)
+      (fun a ha => let ⟨b, hb, hab⟩ := h.1 a ha; ⟨b, hb, ofe_dist_le_of_rel hab⟩)
+      (fun b hb => let ⟨a, ha, hab⟩ := h.2 b hb; ⟨a, ha, ofe_dist_le_of_rel hab.symm⟩)
+  have hlt : ∀ n, Metric.hausdorffDist (K : Set X) L < 1 / 2 ^ n →
+      SetDist (n + 1) (K : Set X) L :=
+    fun n h =>
+      ⟨fun a ha =>
+        let ⟨b, hb, hab⟩ := Metric.exists_dist_lt_of_hausdorffDist_lt ha h hfin
+        ⟨b, hb, ofe_rel_of_dist_le (ofe_dist_le_succ_of_lt hab)⟩,
+       fun b hb =>
+        let ⟨a, ha, hab⟩ := Metric.exists_dist_lt_of_hausdorffDist_lt' hb h hfin
+        ⟨a, ha, ofe_rel_of_dist_le (ofe_dist_le_succ_of_lt hab)⟩⟩
+  rcases ofe_dist_bisected K L with h0 | ⟨m, hm⟩
+  · rw [h0]
+    have hequiv : K ≡ L := (ofe_roundtrip_equiv K L).mp h0
+    refine le_antisymm Metric.hausdorffDist_nonneg (not_lt.mp fun hpos => ?_)
+    obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hpos (by norm_num : (1 / 2 : ℝ) < 1)
+    linarith [hle n (hequiv n), show (1 / 2 : ℝ) ^ n = 1 / 2 ^ n by rw [div_pow, one_pow]]
+  · rw [hm]
+    refine le_antisymm (not_lt.mp fun hlt' => ?_) ?_
+    · have h1 : ofe_dist K L ≤ 1 / 2 ^ (m + 1) := ofe_dist_le_of_rel (hlt m hlt')
+      rw [hm] at h1
+      have h2 : (2 : ℝ) ^ m < 2 ^ (m + 1) := by
+        exact_mod_cast Nat.pow_lt_pow_right (by norm_num) (Nat.lt_succ_self m)
+      have h3 : (1 : ℝ) / 2 ^ (m + 1) < 1 / 2 ^ m := one_div_lt_one_div_of_lt (by positivity) h2
+      linarith
+    · cases m with
+      | zero =>
+        simp only [pow_zero, div_one]
+        obtain ⟨a₀, ha₀⟩ := K.nonempty
+        obtain ⟨b₀, hb₀⟩ := L.nonempty
+        exact Metric.hausdorffDist_le_of_mem_dist zero_le_one
+          (fun a _ => ⟨b₀, hb₀, ofe_dist_le_one a b₀⟩) (fun b _ => ⟨a₀, ha₀, ofe_dist_le_one b a₀⟩)
+      | succ k => exact hle (k + 1) (ofe_rel_of_dist_le hm.le)
+
+theorem exists_finite_net {K : Set X} (hK : TotallyBounded K) (n : ℕ) :
+    ∃ t ⊆ K, t.Finite ∧ ∀ a ∈ K, ∃ b ∈ t, a ≡{n}≡ b := by
+  obtain ⟨t, hts, htfin, hcov⟩ := totallyBounded_iff_subset.mp hK _
+    (Metric.dist_mem_uniformity (by positivity : (0 : ℝ) < 1 / 2 ^ (n + 1)))
+  refine ⟨t, hts, htfin, fun a ha => ?_⟩
+  obtain ⟨b, hb, hab⟩ := Set.mem_iUnion₂.mp (hcov ha)
+  exact ⟨b, hb, ofe_rel_of_dist_lt hab⟩
+
+def net (K : NonemptyCompacts X) (n : ℕ) : Set X :=
+  Classical.choose (exists_finite_net K.isCompact.totallyBounded n)
+
+theorem net_spec (K : NonemptyCompacts X) (n : ℕ) :
+    net K n ⊆ (K : Set X) ∧ (net K n).Finite ∧ ∀ a ∈ K, ∃ b ∈ net K n, a ≡{n}≡ b :=
+  Classical.choose_spec (exists_finite_net K.isCompact.totallyBounded n)
+
+theorem net_subset (K : NonemptyCompacts X) (n : ℕ) : net K n ⊆ (K : Set X) :=
+  (net_spec K n).1
+
+theorem net_finite (K : NonemptyCompacts X) (n : ℕ) : (net K n).Finite :=
+  (net_spec K n).2.1
+
+theorem net_approx (K : NonemptyCompacts X) (n : ℕ) : ∀ a ∈ K, ∃ b ∈ net K n, a ≡{n}≡ b :=
+  (net_spec K n).2.2
+
+def netAgree (K : NonemptyCompacts X) (n : ℕ) : Agree X where
+  car := (net_finite K n).toFinset.toList
+  not_nil := by
+    obtain ⟨a, ha⟩ := K.nonempty
+    obtain ⟨b, hb, -⟩ := net_approx K n a ha
+    exact List.ne_nil_of_mem (Finset.mem_toList.mpr ((net_finite K n).mem_toFinset.mpr hb))
+
+@[simp] theorem mem_netAgree {K : NonemptyCompacts X} {n : ℕ} {b : X} :
+    b ∈ (netAgree K n).car ↔ b ∈ net K n := by
+  simp [netAgree]
+
+def toHyperspace (K : NonemptyCompacts X) : Hyperspace X where
+  chain n := netAgree K n
+  cauchy {n i} hni := by
+    refine ⟨fun a ha => ?_, fun b hb => ?_⟩
+    · obtain ⟨b, hb, hab⟩ := net_approx K n a (net_subset K i (mem_netAgree.mp ha))
+      exact ⟨b, mem_netAgree.mpr hb, hab⟩
+    · obtain ⟨a, ha, hba⟩ := net_approx K i b (net_subset K n (mem_netAgree.mp hb))
+      exact ⟨a, mem_netAgree.mpr ha, (hba.le hni).symm⟩
+
+@[simp] theorem toHyperspace_chain (K : NonemptyCompacts X) (n : ℕ) :
+    (toHyperspace K).chain n = netAgree K n := rfl
+
+instance toHyperspace_ne : NonExpansive (toHyperspace (X := X)) where
+  ne {n K L} h := by
+    refine ⟨fun a ha => ?_, fun b hb => ?_⟩
+    · obtain ⟨b, hb, hab⟩ := h.1 a (net_subset K n (mem_netAgree.mp ha))
+      obtain ⟨b', hb', hbb'⟩ := net_approx L n b hb
+      exact ⟨b', mem_netAgree.mpr hb', hab.trans hbb'⟩
+    · obtain ⟨a, ha, hab⟩ := h.2 b (net_subset L n (mem_netAgree.mp hb))
+      obtain ⟨a', ha', haa'⟩ := net_approx K n a ha
+      exact ⟨a', mem_netAgree.mpr ha', haa'.symm.trans hab⟩
+
+theorem Hyperspace.mem_iff {a : X} {c : Hyperspace X} :
+    a ∈ c ↔ ∀ n, ∃ b ∈ (c.chain n).car, a ≡{n}≡ b := Iff.rfl
+
+variable [IsCOFE X]
+
+theorem Hyperspace.exists_mem_dist (c : Hyperspace X) {n : ℕ} {b : X}
+    (hb : b ∈ (c.chain n).car) : ∃ a ∈ c, a ≡{n}≡ b := by
+  have step : ∀ k, ∀ a ∈ (c.chain (n + k)).car,
+      ∃ a' ∈ (c.chain (n + k + 1)).car, a' ≡{n + k}≡ a :=
+    fun k a ha => (c.cauchy (Nat.le_succ (n + k))).2 a ha
+  obtain ⟨e, he0, hmem, hsucc⟩ : ∃ e : ℕ → X, e 0 = b ∧ (∀ k, e k ∈ (c.chain (n + k)).car) ∧
+      ∀ k, e (k + 1) ≡{n + k}≡ e k := by
+    let E : ∀ k : ℕ, {a : X // a ∈ (c.chain (n + k)).car} := fun k =>
+      Nat.rec (motive := fun k => {a : X // a ∈ (c.chain (n + k)).car}) ⟨b, hb⟩
+        (fun k a => ⟨Classical.choose (step k a.1 a.2),
+          (Classical.choose_spec (step k a.1 a.2)).1⟩) k
+    exact ⟨fun k => (E k).1, rfl, fun k => (E k).2,
+      fun k => (Classical.choose_spec (step k (E k).1 (E k).2)).2⟩
+  have hstrong : ∀ k j, e (k + j) ≡{n + k}≡ e k := by
+    intro k j
+    induction j with
+    | zero => exact .rfl
+    | succ j ih => exact ((hsucc (k + j)).le (by omega)).trans ih
+  let d : Chain X := chainOfSucc e fun k => (hsucc k).le (by omega)
+  refine ⟨IsCOFE.compl d, Hyperspace.mem_iff.mpr fun m => ?_, ?_⟩
+  · obtain ⟨b', hb', hd⟩ := (c.cauchy (Nat.le_add_left m n)).1 (e m) (hmem m)
+    exact ⟨b', hb', (IsCOFE.conv_compl (c := d) (n := m)).trans hd⟩
+  · refine (IsCOFE.conv_compl (c := d) (n := n)).trans ?_
+    simpa [he0] using hstrong 0 n
+
+def ofHyperspace (c : Hyperspace X) : NonemptyCompacts X where
+  carrier := {a | a ∈ c}
+  isCompact' := by
+    refine ((totallyBounded_iff_FinApprox _).mpr fun n => ?_).isCompact_of_isComplete
+      (isComplete_of_chainClosed _ fun d hd => ?_)
+    · classical
+      refine ⟨(c.chain n).car.toFinset, fun a ha => ?_⟩
+      obtain ⟨b, hb, hab⟩ := Hyperspace.mem_iff.mp ha n
+      exact ⟨b, List.mem_toFinset.mpr hb, hab⟩
+    · refine ⟨IsCOFE.compl d, Hyperspace.mem_iff.mpr fun n => ?_, fun n => IsCOFE.conv_compl⟩
+      obtain ⟨b, hb, hab⟩ := Hyperspace.mem_iff.mp (hd n) n
+      exact ⟨b, hb, IsCOFE.conv_compl.trans hab⟩
+  nonempty' := by
+    obtain ⟨b, hb⟩ := mem_of_agree (c.chain 0)
+    obtain ⟨a, ha, -⟩ := Hyperspace.exists_mem_dist c hb
+    exact ⟨a, ha⟩
+
+theorem mem_ofHyperspace {a : X} {c : Hyperspace X} : a ∈ (ofHyperspace c : Set X) ↔ a ∈ c :=
+  Iff.rfl
+
+instance ofHyperspace_ne : NonExpansive (ofHyperspace (X := X)) where
+  ne {n c c'} h := by
+    refine ⟨fun a ha => ?_, fun a' ha' => ?_⟩
+    · obtain ⟨b, hb, hab⟩ := (mem_ofHyperspace.mp ha) n
+      obtain ⟨b', hb', hbb'⟩ := h.1 b hb
+      obtain ⟨a', ha', ha'b'⟩ := Hyperspace.exists_mem_dist c' hb'
+      exact ⟨a', mem_ofHyperspace.mpr ha', hab.trans (hbb'.trans ha'b'.symm)⟩
+    · obtain ⟨b', hb', ha'b'⟩ := (mem_ofHyperspace.mp ha') n
+      obtain ⟨b, hb, hbb'⟩ := h.2 b' hb'
+      obtain ⟨a, ha, hab⟩ := Hyperspace.exists_mem_dist c hb
+      exact ⟨a, mem_ofHyperspace.mpr ha, hab.trans (hbb'.trans ha'b'.symm)⟩
+
+theorem ofHyperspace_toHyperspace (K : NonemptyCompacts X) :
+    ofHyperspace (toHyperspace K) ≡ K := by
+  intro n
+  refine ⟨fun a ha => ?_, fun b hb => ?_⟩
+  · obtain ⟨b, hb, hab⟩ := (mem_ofHyperspace.mp ha) n
+    exact ⟨b, net_subset K n (mem_netAgree.mp hb), hab⟩
+  · refine ⟨b, mem_ofHyperspace.mpr fun m => ?_, .rfl⟩
+    obtain ⟨a, ha, hba⟩ := net_approx K m b hb
+    exact ⟨a, mem_netAgree.mpr ha, hba⟩
+
+theorem toHyperspace_ofHyperspace (c : Hyperspace X) :
+    toHyperspace (ofHyperspace c) ≡ c := by
+  intro n
+  refine ⟨fun a ha => ?_, fun b hb => ?_⟩
+  · exact Hyperspace.mem_iff.mp (mem_ofHyperspace.mp (net_subset _ n (mem_netAgree.mp ha))) n
+  · obtain ⟨a, ha, hab⟩ := Hyperspace.exists_mem_dist c hb
+    obtain ⟨a', ha', haa'⟩ := net_approx (ofHyperspace c) n a (mem_ofHyperspace.mpr ha)
+    exact ⟨a', mem_netAgree.mpr ha', haa'.symm.trans hab⟩
+
+def nonemptyCompactsIsoHyperspace : OFE.Iso (NonemptyCompacts X) (Hyperspace X) where
+  hom := ⟨toHyperspace, inferInstance⟩
+  inv := ⟨ofHyperspace, inferInstance⟩
+  hom_inv := toHyperspace_ofHyperspace _
+  inv_hom := ofHyperspace_toHyperspace _
+
+end Hyperspace
+
+section Naturality
+
+open TopologicalSpace
+
+variable {X Y Z : Type _} [OFE X] [OFE Y] [OFE Z]
+
+theorem NonemptyCompacts.mem_map {f : X → Y} {hf : Continuous f} {K : NonemptyCompacts X}
+    {y : Y} : y ∈ K.map f hf ↔ ∃ x ∈ K, f x = y := Iff.rfl
+
+def compactsMap (f : X -n> Y) : NonemptyCompacts X -n> NonemptyCompacts Y where
+  f K := K.map f (NonExpansive.continuous f)
+  ne.ne {n K L} h := by
+    refine ⟨fun y hy => ?_, fun y hy => ?_⟩
+    · obtain ⟨x, hx, rfl⟩ := NonemptyCompacts.mem_map.mp hy
+      obtain ⟨x', hx', hxx'⟩ := h.1 x hx
+      exact ⟨f x', NonemptyCompacts.mem_map.mpr ⟨x', hx', rfl⟩, NonExpansive.ne hxx'⟩
+    · obtain ⟨x, hx, rfl⟩ := NonemptyCompacts.mem_map.mp hy
+      obtain ⟨x', hx', hxx'⟩ := h.2 x hx
+      exact ⟨f x', NonemptyCompacts.mem_map.mpr ⟨x', hx', rfl⟩, NonExpansive.ne hxx'⟩
+
+theorem mem_compactsMap {f : X -n> Y} {K : NonemptyCompacts X} {y : Y} :
+    y ∈ compactsMap f K ↔ ∃ x ∈ K, f x = y := Iff.rfl
+
+theorem compactsMap_id : compactsMap (OFE.Hom.id : X -n> X) = OFE.Hom.id := by
+  ext K : 2
+  exact NonemptyCompacts.map_id K
+
+theorem compactsMap_comp (g : Y -n> Z) (f : X -n> Y) :
+    compactsMap (g.comp f) = (compactsMap g).comp (compactsMap f) := by
+  ext K : 2
+  exact NonemptyCompacts.map_comp g f (NonExpansive.continuous g) (NonExpansive.continuous f) K
+
+theorem Hyperspace.map_chain (f : X -n> Y) (c : Hyperspace X) (n : ℕ) :
+    (Hyperspace.map f c).chain n = Agree.map' f (c.chain n) := rfl
+
+theorem toHyperspace_compactsMap (f : X -n> Y) (K : NonemptyCompacts X) :
+    toHyperspace (compactsMap f K) ≡ Hyperspace.map f (toHyperspace K) := by
+  intro n
+  simp only [Hyperspace.map_chain, toHyperspace_chain]
+  refine ⟨fun y hy => ?_, fun y hy => ?_⟩
+  · obtain ⟨x, hx, rfl⟩ := mem_compactsMap.mp (net_subset _ n (mem_netAgree.mp hy))
+    obtain ⟨b, hb, hxb⟩ := net_approx K n x hx
+    exact ⟨f b, List.mem_map.mpr ⟨b, mem_netAgree.mpr hb, rfl⟩, NonExpansive.ne hxb⟩
+  · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp hy
+    obtain ⟨c, hc, hbc⟩ := net_approx (compactsMap f K) n (f b)
+      (mem_compactsMap.mpr ⟨b, net_subset K n (mem_netAgree.mp hb), rfl⟩)
+    exact ⟨c, mem_netAgree.mpr hc, hbc.symm⟩
+
+variable [IsCOFE X] [IsCOFE Y]
+
+theorem ofHyperspace_map (f : X -n> Y) (c : Hyperspace X) :
+    ofHyperspace (Hyperspace.map f c) ≡ compactsMap f (ofHyperspace c) :=
+  calc ofHyperspace (Hyperspace.map f c)
+      ≡ ofHyperspace (Hyperspace.map f (toHyperspace (ofHyperspace c))) :=
+        NonExpansive.eqv (NonExpansive.eqv (toHyperspace_ofHyperspace c).symm)
+    _ ≡ ofHyperspace (toHyperspace (compactsMap f (ofHyperspace c))) :=
+        NonExpansive.eqv (toHyperspace_compactsMap f _).symm
+    _ ≡ compactsMap f (ofHyperspace c) := ofHyperspace_toHyperspace _
+
+theorem nonemptyCompactsIsoHyperspace_natural (f : X -n> Y) :
+    nonemptyCompactsIsoHyperspace.hom.comp (compactsMap f) ≡
+      (Hyperspace.map f).comp nonemptyCompactsIsoHyperspace.hom :=
+  fun K => toHyperspace_compactsMap f K
+
+theorem nonemptyCompactsIsoHyperspace_natural_inv (f : X -n> Y) :
+    nonemptyCompactsIsoHyperspace.inv.comp (Hyperspace.map f) ≡
+      (compactsMap f).comp nonemptyCompactsIsoHyperspace.inv :=
+  fun c => ofHyperspace_map f c
+
+end Naturality
 
 section Categories
 
